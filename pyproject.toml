@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stonp"
+version = "0.0.1"
+#dynamic = ["version"]
+authors = [
+  { name="Pablo Renard", email="p.renard.guiral@gmail.com" },
+]
+description = "A package to stack narrow-band photometric catalogs for spectral analysis"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "xarray",
+    "matplotlib",
+    "scipy",
+    "astropy >= 4.2"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/PAU-survey/stonp"
+"Bug Tracker" = "https://github.com/PAU-survey/stonp/issues"
