@@ -1,12 +1,12 @@
-# stonp (STacking Objects with Narrow-band Photometry)
+# stonp (STacker Of Narrow-band Photometry)
 
 stonp reads photometric galaxy catalogs, shifts them to rest frame and stacks the data in order to obtain average spectral energy distributions (SEDs).
 
 Just run
 ```
-import stonp
+from stonp import Stacker
 
-st = stonp.Stacker()
+st = Stacker()
 st.load_catalog(...)
 st.to_rest_frame(...)
 st.stack(...)
@@ -21,7 +21,7 @@ and get publication-ready SED plots from your data!
 - Several options for flux conversion, error calculation and weighting
 - Splits the catalog in any multi-dimensional binning to derive SEDs for different populations and/or measurements
 - Saves the stacked SEDs in a multi-dimensional xarray with all necessary metadata
-- Highly versatile plotting function
+- Plots the results with a highly versatile API
 
 
 ## Installation
@@ -33,7 +33,8 @@ pip install -e .
 ```
 
 ## Documentation
-coming soon!
+https://stonp.readthedocs.io 
+Still working on it!
 
 ## Citations
 coming soon!

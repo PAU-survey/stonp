@@ -4,7 +4,7 @@ Getting started
 ===============
 
 
-stonp is a module that loads photometric galaxy catalogs and stacks their data to obtain average SEDs, which are stored in a :ref:`stacked_seds <stacked_seds>`: array. This is all done through a single object, the :ref:`Stacker <stacker>` class Each `Stacker` instance may contain a single photometric catalog, and produces a single `stacked_seds` array. Therefore, in order to work simulatenously with different catalogs or different stacking configurations, different `Stacker` instances must be created.
+stonp is a module that loads photometric galaxy catalogs and stacks their data to obtain average SEDs, which are stored in a :ref:`stacked_seds <stacked_seds>` array. This is all done through a single object, the :ref:`Stacker <stacker>` class Each `Stacker` instance may contain a single photometric catalog, and produces a single `stacked_seds` array. Therefore, in order to work simulatenously with different catalogs or different stacking configurations, different `Stacker` instances must be created.
 
 
 To import stonp and create a new `Stacker` instance, just type::
@@ -26,10 +26,10 @@ You can load a photometric galaxy catalog as follows::
 
 This method will load the catalog into the `Stacker` instance, performing some basic data cleaning in the process (removing objects with too many missing band fluxes, interpolating band fluxes if necessary). The requisites for the catalog file are:
 
-* It must be .csv files with no other header than the column labels.
+* A .csv files with no other header than the column labels.
 * Band fluxes must be in units of spectral wavelength density:
 
-.. math:: f_{\lambda}
+.. math:: f_{\lambda}s
 
 * One single row per object is allowed.
 * At least one column must contain redshift data. Objects with invalid redshift data will be dismissed.
@@ -74,7 +74,7 @@ Several options can be specified when shifting to rest frame, namely:
 
     .. math:: 
 
-        f_{\lambda\, norm} = f_{\lambda} / \int_{\lambda_{min}}^{\lambda_{max}} f_{\lambda}(\lambda) d\lambda \cdot (\lambda_{max} - \lambda_{min})
+        f_{\lambda\, norm} = \frac{f_{\lambda}}{\lambda_{max} - \lambda_{min}} / \int_{\lambda_{min}}^{\lambda_{max}} f_{\lambda}(\lambda) d\lambda
 
 * Interpolation type (`use_band_responses`): Two different methods can be used to interpolate the band fluxes to the rest-frame grid. A linear interpolation of the closest bands (`use_band_responses` = False) can be used, or a weighted average of all bands (`use_band_responses` = True), where the weights for a given wavelength grid point lambda and band n are computed as shown below. This weighting requires the band response functions to have been loaded as a .json file, but it is more accurate than linear interpolation, and specially recommended if an inhomogeneous band set is being used (e.g., mixed broad and narrow bands, or narrow bands of irregular coverage).
 
@@ -100,17 +100,17 @@ This will compute the average rest-frame SEDs in all of the specified bins, and 
 * Binning in which the objects must be stacked, specified as a dictionary (`bin_dict`). Please refer to the :ref:`bin_dict page<bin_dict>` for a complete explanation of how to specify the binning.
 * Weighting (`weight`): By default, for each bin the unweighted average SED will be computed. However, a inverse variance weighting (`weight` = 'inv_variance') can be applied, or SNR squared weighting (`weight` = 'snr_square'). Both options require to have propagated the error when shifting to rest frame (`st.to_rest_frame(compute_error=True)`).
 * The error of the stacked SEDs (`error_type`). By default, no error will be computed for the stacked fluxes, but you you can specify the error to be the propagated flux error of the average (`error_type` = 'flux_error'), the standard deviation of all the stacked fluxes (i.e., sample variance, `error_type` = 'std'), or the standard deviation of the mean (`error_type` = 'std_mean').
-* Minimum number of objects per wavelength grid point (`min_n_obj`). If a given wavelength point has less objects, its stacked flux will be set to NaN.
+* Minimum number of objects per wavelength grid point (`min_n_obj`). If a given wavelength point has less objects than `min_n_obj`, its stacked flux and error will be set to NaN.
 
 
 4) Saving the stack
 -------------------
 
-Finally, the `stacked_seds` array that has been generated can be saved into an specified directory::
+Finally, the `stacked_seds` array that has been generated can be saved into a given directory::
 
     st.save_stack('path/to/stack_folder')
 
-The `stacked_seds` array will be saved inside this directory as a netCDF file (stacked_seds.nc), which can be read and manipulated with `Xarray <https://xarray.dev/>`_. In addition to saving the array, you can also make `Stacker` instance return the `stacked_seds` array it is currently working with, to examine it directly. Just use the 'st.return_stack()' method::
+The `stacked_seds` array will be saved inside this directory as a netCDF file (stacked_seds.nc), which can be read and manipulated with `Xarray <https://xarray.dev/>`_. In addition to saving the array, you can also make the `Stacker` instance return the `stacked_seds` array it is currently working with, to examine it directly. Just type::
 
     stacked_seds = st.return_stack()
 

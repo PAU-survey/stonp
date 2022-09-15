@@ -1,0 +1,6 @@
+numpy
+pandas
+xarray
+matplotlib
+scipy
+astropy>=4.2

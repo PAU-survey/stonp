@@ -23,7 +23,7 @@ For example, assuming a redshift column labeled 'zb', we can specify the followi
     bin_dict = {'zb' : [[0.5, 0.6], [0.6, 0.7], [0.7, 0.8]]}
 
 
-This will produce three different redshift between zb=0.5 and zb=0.8, each one of width Δz=0.1. The lower bound of each bin will be closed, and the upper bound open (e.g., the first bin in our example will be 0.5 <= 'zb' < 0.6).
+This will produce three different redshift between zb=0.5 and zb=0.8, each one of width Δz=0.1. The lower bound of each bin will be closed, and the upper bound open (e.g., the first bin in our example will be 0.5 <= 'zb' < 0.6). This open/closed bound criterion can not be modified.
 
 For a set of contiguous bins, instead of specifying the bounds of each bin in a separate nested list, you can just specify the edges of each bin in the same list. For example::
 
@@ -40,7 +40,7 @@ will produce the same binning as::
     bin_dict = {'zb' : [[0.5, 0.6], [0.6, 0.7], [0.7, 0.8], [1, 1.2]]}
 
 
-In these last two examples, all galaxies with 0.8 <= 'zb' < 1 will not be included in any bin, and thus excluded from stacking. 
+In these last two examples, all galaxies with 0.8 <= 'zb' < 1 will not be included in any bin, and thus excluded from stacking.
 
 
 Binning with percentiles
@@ -53,14 +53,14 @@ For example, let us assume that our galaxy catalog also has a column for the log
     bin_dict = {'zb' : [0.5, 0.6, 0.7, 0.8], 'sm_log%%' : [0, 25, 50, 75, 100]}
 
 
-The syntax for specifying the bin edges (separate or contiguous) works exactly the same; the only difference is that the bin edges provided in the list are interpreted as percentiles.
+The syntax for specifying the bin edges (separate or contiguous) works exactly the same; the only difference is that the bin edges provided in the list are interpreted as percentiles. Lower bounds will be closed and open bounds open as in the previous cases.
 
 
 
 Discrete binning
 ----------------
 
-Discrete binning allows to bin properties that have discrete values, such as galaxy types, AGN classifications, or any flags derived from data reduction. To apply a discrete binning, append '==' to the column label used as a key. The bin values must be specified as a list; since there are no bin upper and lower bounds (given that we are checking for equality), no nested list are needed.
+Discrete binning allows to bin properties that have discrete values, such as galaxy types, AGN classifications, or any flags derived from data reduction. To apply a discrete binning, append '==' to the column label used as a key. The bin values must be specified as a list; since there are no bin upper and lower bounds (given that we are checking for equality), no nested lists are needed.
 
 For example, let us assume that our catalog also has an AGN classification; the column is labeled 'agn', and the values are boolean (True or False). If we want to use the previous binning, but also separate between galaxies with and without AGNs, we have to input::
 
