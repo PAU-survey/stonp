@@ -1,6 +1,6 @@
-numpy
-pandas
-xarray
-matplotlib
-scipy
-astropy>=4.2
+numpy==1.20.3
+pandas==1.3.0
+xarray==0.20.1
+matplotlib==3.5.1
+scipy==1.7.1
+astropy==4.2.1
