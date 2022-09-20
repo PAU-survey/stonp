@@ -4,3 +4,4 @@ xarray==0.20.1
 matplotlib==3.5.1
 scipy==1.7.1
 astropy==4.2.1
+myst-parser==0.18.0
