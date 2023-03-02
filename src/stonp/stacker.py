@@ -324,7 +324,7 @@ class Stacker():
         self.alias_dict = alias_dict
 
     
-    def load_catalog(self, cat_dir, max_nan_bands=0, z_label='zb', 
+    def load_catalog(self, catalog, max_nan_bands=0, z_label='zb', 
                      bands_data=None, bands_error_suffix='_error',
                      flux_units = 'erg / (s cm2 nm)', wavelength_units='nm'):
         '''
@@ -335,8 +335,9 @@ class Stacker():
 
         Parameters
         ----------
-        cat_dir : str
-            Directory of the catalog to be loaded.
+        catalog : pandas DataFrame or str
+            If DataFrame instance, the catalog itself, already loaded.
+            If str, directory of the catalog to be loaded.
         max_nan_bands : int, optional
             Maximum number of NaN band fluxes that can be tolerated. Objects
             with more NaN bands will be removed from the catalog when loading.
@@ -375,14 +376,18 @@ class Stacker():
         None.
 
         '''
-        self.cat_dir = cat_dir
     
         self.max_nan_bands = max_nan_bands
         self.z_label = z_label
-        self.flux_units = u.Unit(flux_units)
+        self.flux_units_catalog = u.Unit(flux_units)
         self.wavelength_units = u.Unit(wavelength_units)
         
-        df = pd.read_csv(cat_dir)
+        if isinstance(catalog, pd.DataFrame):
+            df = catalog.copy(deep=True)
+            
+        else:
+            df = pd.read_csv(catalog)
+            
         print(f'Objects in catalog: {len(df)}')
         
         if not bands_data:
@@ -777,15 +782,15 @@ class Stacker():
             #    progress_old = progress
             
         if flux_conversion == 'luminosity':
-            distance_ind = self.flux_units.powers.index(-2)
-            distance_units = self.flux_units.bases[distance_ind]
+            distance_ind = self.flux_units_catalog.powers.index(-2)
+            distance_units = self.flux_units_catalog.bases[distance_ind]
             rf_seds *= (1 + zs[:,None]) # rest-frame scaling
             dl = cosmo.luminosity_distance(zs).to(distance_units)
             rf_seds *= 4 * np.pi * dl[:,None].value**2 # from flux to luminosity
             if compute_error:
                 rf_seds_err *= 4 * np.pi * dl[:,None].value**2
                 
-            self.flux_units *= dl.unit**2
+            self.flux_units = self.flux_units_catalog * dl.unit**2
             
         elif flux_conversion == 'normalized':
             self.flux_units = u.dimensionless_unscaled
