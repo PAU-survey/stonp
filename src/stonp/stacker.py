@@ -324,9 +324,10 @@ class Stacker():
         self.alias_dict = alias_dict
 
     
-    def load_catalog(self, cat_dir, max_nan_bands=0, z_label='zb', 
-                     bands_data=None, bands_error_suffix='_error',
-                     flux_units = 'erg / (s cm2 nm)', wavelength_units='nm'):
+    def load_catalog(self, catalog, max_nan_bands=0, z_label='zb', 
+                     fill_nans='interpolated', bands_data=None, 
+                     bands_error_suffix='_error', flux_units = 'erg / (s cm2 nm)', 
+                     wavelength_units='nm'):
         '''
         Loads a photometric galaxy catalog to stack.
         
@@ -335,8 +336,9 @@ class Stacker():
 
         Parameters
         ----------
-        cat_dir : str
-            Directory of the catalog to be loaded.
+        catalog : pandas DataFrame or str
+            If DataFrame instance, the catalog itself, already loaded.
+            If str, directory of the catalog to be loaded.
         max_nan_bands : int, optional
             Maximum number of NaN band fluxes that can be tolerated. Objects
             with more NaN bands will be removed from the catalog when loading.
@@ -344,6 +346,11 @@ class Stacker():
             catalog, it is advisable to set it to 0. The default is 0.
         z_label : str, optional
             The label of the redshift column to be used. The default is 'zb'.
+        fill_nans: 'interpolated', 'zero'
+            Interpolate NaN flux values or set them to zero. Setting them to
+            zero is not advised if flux_conversion='normalized' when running
+            to_rest_frame(). Errors are always interpolated.
+            The default is 'interpolated'
         bands_data: dict or str, optional
             If dict, dictionary with photometric band wavelength data. 
             Keys must be the column labels, values their average wavelengths. 
@@ -375,14 +382,18 @@ class Stacker():
         None.
 
         '''
-        self.cat_dir = cat_dir
     
         self.max_nan_bands = max_nan_bands
         self.z_label = z_label
-        self.flux_units = u.Unit(flux_units)
+        self.flux_units_catalog = u.Unit(flux_units)
         self.wavelength_units = u.Unit(wavelength_units)
         
-        df = pd.read_csv(cat_dir)
+        if isinstance(catalog, pd.DataFrame):
+            df = catalog.copy(deep=True)
+            
+        else:
+            df = pd.read_csv(catalog)
+            
         print(f'Objects in catalog: {len(df)}')
         
         if not bands_data:
@@ -487,6 +498,9 @@ class Stacker():
             if np.sum(nans) > 0:
                 seds[ind,:], seds_err[ind,:] = self._linterp(self.wl_nb, self.wl_nb[~nans],
                                                              seds[ind,~nans], seds_err[ind,~nans])
+                
+                if fill_nans.lower() == 'zeros':
+                    seds[ind,nans] = 0
         
         df[self.nb_labels] = seds
         df[self.nb_err_labels] = seds_err
@@ -777,18 +791,21 @@ class Stacker():
             #    progress_old = progress
             
         if flux_conversion == 'luminosity':
-            distance_ind = self.flux_units.powers.index(-2)
-            distance_units = self.flux_units.bases[distance_ind]
+            distance_ind = self.flux_units_catalog.powers.index(-2)
+            distance_units = self.flux_units_catalog.bases[distance_ind]
             rf_seds *= (1 + zs[:,None]) # rest-frame scaling
             dl = cosmo.luminosity_distance(zs).to(distance_units)
             rf_seds *= 4 * np.pi * dl[:,None].value**2 # from flux to luminosity
             if compute_error:
                 rf_seds_err *= 4 * np.pi * dl[:,None].value**2
                 
-            self.flux_units *= dl.unit**2
+            self.flux_units = self.flux_units_catalog * dl.unit**2
             
         elif flux_conversion == 'normalized':
             self.flux_units = u.dimensionless_unscaled
+            
+        elif flux_conversion == 'nothing':
+            self.flux_units = self.flux_units_catalog
 
     
         self.rf_seds = np.ma.array(rf_seds, mask=np.isnan(rf_seds))
@@ -1106,7 +1123,8 @@ class Stacker():
                 spectral_lines_dict = spectral_lines
             else:
                 spectral_lines_dict = {'OII': [372.68],'OIII': [495.9, 500.7],
-                       'H$\\alpha$': [656.28],'H$\\beta$': [486.1]}
+                       'H$\\alpha$': [656.28],'H$\\beta$': [486.1],
+                       'MgII' : [280]}
         
         self._rc_parameters(rc_params=rc_params)
                     
@@ -1294,15 +1312,15 @@ class Stacker():
                 #if self.stacked_seds.attrs['flux_units'].lower() == 'normalized':
                 #    ax[0,0].set_ylim(bottom=max(1e-5, ax[0,0].get_ylim()[0]))
 
-        if fig_title:
-            plt.savefig(f'{self.stack_folder}{filename}.pdf', transparent=True)
-            plt.savefig(f'{self.stack_folder}{filename}.png', transparent=True)
-            
-        else:
-            plt.savefig(f'{self.stack_folder}{filename}.pdf', bbox_inches='tight', transparent=True)
-            plt.savefig(f'{self.stack_folder}{filename}.png', bbox_inches='tight', transparent=True)
-
-        if show:
-            plt.show()
-        else:
-            plt.close()
+            if fig_title:
+                plt.savefig(f'{self.stack_folder}{filename}.pdf', transparent=True)
+                plt.savefig(f'{self.stack_folder}{filename}.png', transparent=True)
+                
+            else:
+                plt.savefig(f'{self.stack_folder}{filename}.pdf', bbox_inches='tight', transparent=True)
+                plt.savefig(f'{self.stack_folder}{filename}.png', bbox_inches='tight', transparent=True)
+    
+            if show:
+                plt.show()
+            else:
+                plt.close()
