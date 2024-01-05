@@ -173,7 +173,10 @@ class Stacker():
             ax.tick_params(which='both', left=False)
     
         if legend_labels:
-            leg1 = ax.legend(legend_labels)
+            if spectral_lines_legend:
+                leg1 = ax.legend(legend_labels, loc='upper right')
+            else:
+                leg1 = ax.legend(legend_labels)
     
         if title:
             ax.set_title(title)
@@ -217,12 +220,13 @@ class Stacker():
     
             if spectral_lines_legend:
                 if legend_labels:
-                    ax.legend(lines, list(spectral_lines_dict.keys()), loc=leg1._loc + 1)
-                    ax.add_artist(leg1)
-                    
+                    ax.legend(lines, list(spectral_lines_dict.keys()), loc='lower center')
+
                 else:
                     ax.legend(lines, list(spectral_lines_dict.keys()))
-        
+                    
+                ax.add_artist(leg1)
+
     
     @staticmethod    
     def _rc_parameters(rc_params=None):
@@ -773,6 +777,7 @@ class Stacker():
                     rf_sed_err[~select_wl_obs] = np.nan
 
             if flux_conversion == 'normalized':
+                self.flux_conversion = 'normalized'
                 rf_sed[rf_sed < 0] = 0 # negative fluxes set to zero to avoid normalization issues
                 select = ~np.isnan(rf_sed)
                 norm = np.trapz(rf_sed[select], wl_grid[select])
@@ -1029,6 +1034,16 @@ class Stacker():
                         
             else:
                 stack_sed_err = np.full(self.wl_grid.shape[0], np.nan)
+                
+            # renomalizing if the rest-frame shift was normalized
+            if self.flux_conversion == 'normalized':
+                #normalization = np.trapz(stack_sed, self.wl_grid[~stack_sed.mask])
+                normalization = np.trapz(stack_sed, self.wl_grid)
+                wl_max = self.wl_grid[~stack_sed.mask][-1]
+                wl_min = self.wl_grid[~stack_sed.mask][0]
+                stack_sed = stack_sed / normalization * (wl_max - wl_min)
+                stack_sed_err = stack_sed_err / normalization * (wl_max - wl_min)
+
 
             # Storing
             self.stacked_seds = stacked_seds
