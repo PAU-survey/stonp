@@ -732,7 +732,7 @@ class Stacker():
         scaling_wl = 1 / wl_rf_step # scaling to integers first
         wl_rf_min = wl_obs_min / (1 + z_max)
         wl_rf_max = wl_obs_max / (1 + z_min)
-        wl_grid = np.arange(wl_rf_min * scaling_wl, wl_rf_max + 1, 1)
+        wl_grid = np.arange(wl_rf_min * scaling_wl, wl_rf_max * scaling_wl + 1, 1)
         wl_grid /= scaling_wl
         
         
