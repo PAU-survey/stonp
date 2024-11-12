@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 
 from astropy.cosmology import Planck18 as cosmo
+from astropy import constants as const
 from scipy import interpolate
 
 
@@ -95,6 +96,72 @@ class Stacker():
         
         return y, y_err
     
+    @staticmethod
+    def _json_loader(bands_data_dir, df=None, sort=True):
+        # Loads the .json of band response functions specified
+        # Returns band labels, average wavelengths, and interpolated response
+        # functions
+        with open(bands_data_dir, 'r') as read_file:
+            band_responses_raw = json.load(read_file)
+            
+        band_responses = {}
+        for key, value in band_responses_raw.items():
+            # Removing bands that are not in the catalog, if provided
+            if df is not None:
+                if key in df.columns:
+                    band_responses[key] = value
+                
+            # Otherwise we'll add all bands
+            else:
+                band_responses[key] = value
+
+            
+        for key, value in band_responses.items():
+            band_responses[key]['wavelength'] = np.array(value['wavelength'])
+            band_responses[key]['response'] = np.array(value['response'])   
+            
+        # Computing mean wavelengths and sorting in ascending wavelength order
+        band_mean_wls = {}
+        for key, value in band_responses.items():
+            wl = np.array(value['wavelength'])
+            r = np.array(value['response'])
+            band_mean_wls[key] = np.trapz(wl * r, wl) / np.trapz(r, wl)
+        
+        if sort:
+            inds = np.argsort(list(band_mean_wls.values()))
+                
+            band_mean_wls = {list(band_mean_wls.keys())[i] : list(band_mean_wls.values())[i]
+                 for i in inds}
+            
+            band_responses = {list(band_responses.keys())[i] : list(band_responses.values())[i]
+                             for i in inds}
+        
+        ## Generating interpolation object
+        ## returns all interpolated normalized bands for a given wavelength grid, at once
+        # Computing the highest resolution common wavelength grid for all band responses
+        wl_bands = [value['wavelength'] for value in band_responses.values()]
+        wl_bands_min = np.min([wl_band[0] for wl_band in wl_bands])
+        wl_bands_max = np.max([wl_band[-1] for wl_band in wl_bands])
+        wl_bands_step = np.min([np.min(wl_band[1:] - wl_band[:-1]) for wl_band in wl_bands])
+        wl_grid_bands = np.arange(wl_bands_min / wl_bands_step, 
+                                 wl_bands_max / wl_bands_step + 1) * wl_bands_step
+        
+        # Interpolating to a single array the band responses
+        r_nb = np.zeros([len(band_responses), wl_grid_bands.shape[0]])
+        i = 0
+        for value in band_responses.values():
+            r_nb[i,:] = np.interp(wl_grid_bands, value['wavelength'], value['response'],
+                                        left=0, right=0)
+            r_nb[i,:] /= np.trapz(r_nb[i,:], wl_grid_bands)
+            i += 1
+            
+        # Computing the interpolation object
+        r_nb = interpolate.interp1d(wl_grid_bands, r_nb, bounds_error=False, fill_value=0)
+        
+        nb_labels = list(band_mean_wls.keys())
+        wl_nb = np.array(list(band_mean_wls.values()))
+        
+        return nb_labels, wl_nb, r_nb
     
     @staticmethod
     def _bin_dict_parser(bin_dict):
@@ -371,11 +438,10 @@ class Stacker():
             Suffix to be appended to the band flux column labels in order to 
             refer to the band flux error columns. The default is '_error'.
         flux_units : str or astropy `unit` object, optional
-            The units of the band fluxes. Assumed to be 
-            power*wavelength^-1*distance^-2, 
-            or energy*time^-1*wavelength^-1*distance^-2. If string, must be
-            compatible with the `astropy.units` string format. The default is
-            'erg / (s cm2 nm)'.
+            The units of the band fluxes. Can be either spectral flux 
+            wavelength density or spectral flux frequency density. If string, 
+            must be compatible with the `astropy.units` string format. 
+            The default is 'erg / (s cm2 nm)'.
         wavelength_units : str or astropy `unit` object, optional
             The wavelength units of the bands. If string, must be
             compatible with the `astropy.units` string format. Does not need to
@@ -391,6 +457,16 @@ class Stacker():
         self.z_label = z_label
         self.flux_units_catalog = u.Unit(flux_units)
         self.wavelength_units = u.Unit(wavelength_units)
+        
+        # Checking if flux units are wavelength density or frequency density
+        if 'spectral flux density wav' in self.flux_units_catalog.physical_type:
+            self.flux_density = 'wavelength'
+        
+        elif 'spectral flux density' in self.flux_units_catalog.physical_type:
+            self.flux_density = 'frequency'
+            
+        else:
+            raise ValueError("Flux units not recognized as spectral flux density in wavelength or frequency")               
         
         if isinstance(catalog, pd.DataFrame):
             df = catalog.copy(deep=True)
@@ -425,58 +501,10 @@ class Stacker():
             self.wl_nb = np.array(list(bands_data.values()))
             
         elif isinstance(bands_data, str):
-            with open(bands_data, 'r') as read_file:
-                band_responses_raw = json.load(read_file)
-                
-            # Removing bands that are not in the catalog
-            band_responses = {}
-            for key, value in band_responses_raw.items():
-                if key in df.columns:
-                    band_responses[key] = value
-                
-            for key, value in band_responses.items():
-                band_responses[key]['wavelength'] = np.array(value['wavelength'])
-                band_responses[key]['response'] = np.array(value['response'])   
-                
-            # Computing mean wavelengths and sorting in ascending wavelength order
-            band_mean_wls = {}
-            for key, value in band_responses.items():
-                wl = np.array(value['wavelength'])
-                r = np.array(value['response'])
-                band_mean_wls[key] = np.trapz(wl * r, wl) / np.trapz(r, wl)
-                
-            inds = np.argsort(list(band_mean_wls.values()))
+            nb_labels, wl_nb, r_nb = self._json_loader(bands_data, df=df)
             
-            band_mean_wls = {list(band_mean_wls.keys())[i] : list(band_mean_wls.values())[i]
-                 for i in inds}
-            
-            band_responses = {list(band_responses.keys())[i] : list(band_responses.values())[i]
-                             for i in inds}
-            
-            ## Generating interpolation object
-            ## returns all interpolated normalized bands for a given wavelength grid, at once
-            # Computing the highest resolution common wavelength grid for all band responses
-            wl_bands = [value['wavelength'] for value in band_responses.values()]
-            wl_bands_min = np.min([wl_band[0] for wl_band in wl_bands])
-            wl_bands_max = np.max([wl_band[-1] for wl_band in wl_bands])
-            wl_bands_step = np.min([np.mean(wl_band[1:] - wl_band[:-1]) for wl_band in wl_bands])
-            wl_grid_bands = np.arange(wl_bands_min / wl_bands_step, 
-                                     wl_bands_max / wl_bands_step + 1) * wl_bands_step
-            
-            # Interpolating to a single array the band responses
-            r_nb = np.zeros([len(band_responses), wl_grid_bands.shape[0]])
-            i = 0
-            for value in band_responses.values():
-                r_nb[i,:] = np.interp(wl_grid_bands, value['wavelength'], value['response'],
-                                            left=0, right=0)
-                r_nb[i,:] /= np.trapz(r_nb[i,:], wl_grid_bands)
-                i += 1
-                
-            # Computing the interpolation object
-            r_nb = interpolate.interp1d(wl_grid_bands, r_nb, bounds_error=False, fill_value=0)
-            
-            self.nb_labels = list(band_mean_wls.keys())
-            self.wl_nb = np.array(list(band_mean_wls.values()))
+            self.nb_labels = nb_labels
+            self.wl_nb = wl_nb
             self.r_nb = r_nb
             
         else:
@@ -580,7 +608,9 @@ class Stacker():
         return self.stacked_seds
 
 
-    def column_histogram(self,label,  bins, save=False):
+    def column_histogram(self, label,  bins, save=False):
+        # why does this return n obj min and its value?
+        # can't we just have the histogram as it is? Doesn't seem used elsewhere
         """
         Plots a histogram of a given column of the loaded catalog.
         
@@ -655,7 +685,7 @@ class Stacker():
             - 'normalized': Normalized all SEDs so their integral is equal
               to their wavelength span.
             - 'luminosity': Converts from spectral flux density to spectral
-              luminosity density by multiplying by 4pi*luminosity_distance^2.
+              luminosity density.
             - 'nothing': Does not apply any unit conversion, shifts fluxes
               as they are in the catalog.
             
@@ -689,8 +719,8 @@ class Stacker():
             Determine if the error must be determined or not when shifting
             to rest frame. Setting it to False will significantly reduce 
             computation time, but will not allow the use of any specific
-            weighting or error-based shaded areas when running `Stacker.stack()`
-            or `Stacker.plot()`.
+            weighting when stacking, nor computing error-based shaded areas 
+            when running `Stacker.stack()` or `Stacker.plot()`.
             Default is True.
         
         Returns
@@ -744,22 +774,22 @@ class Stacker():
         zs = self.df[self.z_label].values
         #progress_old = 0
         for i in range(rf_seds.shape[0]):
-
+            
             sed = seds[i,:]
             sed_err = seds_err[i,:]
             z = zs[i]
             select_wl_obs = (wl_grid >= wl_obs_min / (1 + z)) & (wl_grid <= wl_obs_max / (1 + z))
             if use_band_responses:
                 with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore", message="invalid value encountered in true_divide")
+                    warnings.filterwarnings("ignore", message="invalid value encountered in divide")
                     nb_weights = self.r_nb(wl_grid * (1 + z))**2
                     nb_weights[np.isnan(sed),:] = 0 # NaN bands won't count at all
                     rf_sed = np.nansum(nb_weights * sed[:,None], axis=0) / np.nansum(nb_weights, axis=0)
                     if compute_error:
                         rf_sed_err = np.sqrt(np.nansum((nb_weights * sed_err[:,None])**2, axis=0))
                         rf_sed_err /= np.nansum(nb_weights, axis=0)
-                    
-                    # Taking into accounto only the wavelengths inside (wl_obs_min, wl_obs_max)
+                                                    
+                    # Taking into account only the wavelengths inside (wl_obs_min, wl_obs_max)
                     rf_sed[~select_wl_obs] = np.nan
                     if compute_error:
                         rf_sed_err[~select_wl_obs] = np.nan
@@ -775,16 +805,43 @@ class Stacker():
                 rf_sed[~select_wl_obs] = np.nan
                 if compute_error:
                     rf_sed_err[~select_wl_obs] = np.nan
+                    
+            # Re-scaling flux densities as they are now in rest frame (to conserve bolometric flux)
+            # rest-frame scaling
+            if self.flux_density == 'wavelength':
+                rf_sed *= (1 + z)
+                if compute_error:
+                    rf_sed_err *= (1 + z)
+                    
+            
+            elif self.flux_density == 'frequency':
+                rf_sed /= (1 + z)
+                if compute_error:
+                    rf_sed_err /= (1 + z)
+                    
 
-            if flux_conversion == 'normalized':
+
+            # MAYBE WE NEED TO NORMALIZE IN FREQUENCY FOR FREQUENCY FLUX DENSITIES??
+            # otherwise we're not preserving bolometric flux here
+            if flux_conversion == 'normalized': 
                 self.flux_conversion = 'normalized'
                 rf_sed[rf_sed < 0] = 0 # negative fluxes set to zero to avoid normalization issues
                 select = ~np.isnan(rf_sed)
-                norm = np.trapz(rf_sed[select], wl_grid[select])
-                wl_span = wl_grid[select][-1] - wl_grid[select][0]
-                rf_sed = rf_sed / norm * wl_span # norm of rest-frame SED equal to wavelength span
-                if compute_error:
-                    rf_sed_err = rf_sed_err / norm * wl_span
+                if self.flux_density == 'wavelength':
+                    norm = np.trapz(rf_sed[select], wl_grid[select])
+                    wl_span = wl_grid[select][-1] - wl_grid[select][0]
+                    rf_sed = rf_sed / norm * wl_span # norm of rest-frame SED equal to wavelength span
+                    if compute_error:
+                        rf_sed_err = rf_sed_err / norm * wl_span
+                        
+                elif self.flux_density == 'frequency':
+                    # Since we're normalizing, we don't care about unit consistency
+                    fq_grid = const.c / wl_grid
+                    norm = -np.trapz(rf_sed[select], fq_grid[select])
+                    fq_span = fq_grid[select][0] - fq_grid[select][-1]
+                    rf_sed = rf_sed / norm * fq_span # norm of rest-frame SED equal to wavelength span
+                    if compute_error:
+                        rf_sed_err = rf_sed_err / norm * fq_span
                                     
             rf_seds[i,:] = rf_sed
             if compute_error:
@@ -798,9 +855,10 @@ class Stacker():
         if flux_conversion == 'luminosity':
             distance_ind = self.flux_units_catalog.powers.index(-2)
             distance_units = self.flux_units_catalog.bases[distance_ind]
-            rf_seds *= (1 + zs[:,None]) # rest-frame scaling
+            
+            # from flux to luminosity
             dl = cosmo.luminosity_distance(zs).to(distance_units)
-            rf_seds *= 4 * np.pi * dl[:,None].value**2 # from flux to luminosity
+            rf_seds *= 4 * np.pi * dl[:,None].value**2 
             if compute_error:
                 rf_seds_err *= 4 * np.pi * dl[:,None].value**2
                 
@@ -1035,7 +1093,7 @@ class Stacker():
             else:
                 stack_sed_err = np.full(self.wl_grid.shape[0], np.nan)
                 
-            # renomalizing if the rest-frame shift was normalized
+            # renormalizing if the rest-frame shift was normalized. Just in case
             if self.flux_conversion == 'normalized':
                 #normalization = np.trapz(stack_sed, self.wl_grid[~stack_sed.mask])
                 normalization = np.trapz(stack_sed, self.wl_grid)
