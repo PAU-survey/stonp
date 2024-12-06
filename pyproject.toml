@@ -25,7 +25,8 @@ dependencies = [
     "xarray",
     "matplotlib",
     "scipy",
-    "astropy >= 4.2"
+    "astropy >= 4.2",
+    "pyarrow"
 ]
 
 [project.urls]
