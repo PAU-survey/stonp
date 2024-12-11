@@ -44,6 +44,7 @@ class Stacker():
         self.stack_saved = False
         self.alias_dict = {}
 
+
     @staticmethod
     def _linterp(x, xp, yp, yp_err):
         """
@@ -96,6 +97,7 @@ class Stacker():
 
         return y, y_err
 
+
     @staticmethod
     def _json_loader(bands_data_dir, df=None, sort=True):
         # Loads the .json of band response functions specified
@@ -143,26 +145,29 @@ class Stacker():
         wl_bands_max = np.max([wl_band[-1] for wl_band in wl_bands])
         wl_bands_step = np.min(
             [np.min(wl_band[1:] - wl_band[:-1]) for wl_band in wl_bands])
-        wl_grid_bands = np.arange(wl_bands_min / wl_bands_step,
+        wl_grid_obs = np.arange(wl_bands_min / wl_bands_step,
                                   wl_bands_max / wl_bands_step + 1) * wl_bands_step
 
         # Interpolating to a single array the band responses
-        r_nb = np.zeros([len(band_responses), wl_grid_bands.shape[0]])
+        r_nb = np.zeros([len(band_responses), wl_grid_obs.shape[0]])
         i = 0
         for value in band_responses.values():
-            r_nb[i, :] = np.interp(wl_grid_bands, value['wavelength'], value['response'],
+            r_nb[i, :] = np.interp(wl_grid_obs, value['wavelength'], value['response'],
                                    left=0, right=0)
-            r_nb[i, :] /= np.trapz(r_nb[i, :], wl_grid_bands)
+            r_nb[i, :] /= np.trapz(r_nb[i, :], wl_grid_obs)
             i += 1
 
         # Computing the interpolation object
         r_nb = interpolate.interp1d(
-            wl_grid_bands, r_nb, bounds_error=False, fill_value=0)
+            wl_grid_obs, r_nb, bounds_error=False, fill_value=0)
 
         nb_labels = list(band_mean_wls.keys())
         wl_nb = np.array(list(band_mean_wls.values()))
 
-        return nb_labels, wl_nb, r_nb
+        #maybe we could include something to crop unnecessary wavelengths 
+        # in wl_grid_obs and save memory when computing smoothing band
+        return nb_labels, wl_nb, r_nb, wl_grid_obs 
+
 
     @staticmethod
     def _bin_dict_parser(bin_dict):
@@ -184,6 +189,7 @@ class Stacker():
 
         return bin_dict
 
+
     @staticmethod
     def _determine_cols_rows(n_subplots, aspect_ratio):
         # Determines the number of columns a rows for a plot with a given
@@ -198,6 +204,7 @@ class Stacker():
                 n_rows += 1
 
         return n_cols, n_rows
+
 
     @staticmethod
     def _single_plotter(ax, stacked_seds_tmp, kw, line_label=None,
@@ -296,6 +303,7 @@ class Stacker():
 
                 ax.add_artist(leg1)
 
+
     @staticmethod
     def _rc_parameters(rc_params=None):
         # Defines the default parameters for plotting layout with matplotlib
@@ -311,6 +319,7 @@ class Stacker():
 
         if rc_params:
             plt.rcParams.update(rc_params)
+
 
     @staticmethod
     def _query_yes_no(question, default="yes"):
@@ -370,6 +379,7 @@ class Stacker():
 
         return range_label
 
+
     def define_aliases(self, alias_dict):
         '''
         Defines the plotting aliases for catalog labels.
@@ -391,6 +401,7 @@ class Stacker():
         '''
 
         self.alias_dict = alias_dict
+
 
     def load_catalog(self, catalog, max_nan_bands=0, z_label='zb',
                      fill_nans='interpolated', bands_data=None,
@@ -508,17 +519,22 @@ class Stacker():
                                    735.52350426, 745.49322613, 755.29712726, 766.76179833,
                                    775.08781748, 784.74748909, 795.16537091, 805.04549444,
                                    815.15565658, 825.48236959, 835.88372417, 845.84031742])
+            
+            self.have_band_responses = False
 
         elif isinstance(bands_data, dict):
             self.nb_labels = list(bands_data.keys())
             self.wl_nb = np.array(list(bands_data.values()))
+            self.have_band_responses = False
 
         elif isinstance(bands_data, str):
-            nb_labels, wl_nb, r_nb = self._json_loader(bands_data, df=df)
+            nb_labels, wl_nb, r_nb, wl_grid_obs = self._json_loader(bands_data, df=df)
 
             self.nb_labels = nb_labels
             self.wl_nb = wl_nb
             self.r_nb = r_nb
+            self.wl_grid_obs = wl_grid_obs
+            self.have_band_responses = True
 
         else:
             raise ValueError(
@@ -552,10 +568,55 @@ class Stacker():
 
                 if fill_nans.lower() == 'zeros':
                     seds[ind, nans] = 0
+                    
+        # If the bands data is a .json with band responses, computing the 
+        # observed frame smoothing band
+        # First index is "continuous band index" (or the wavelength in the stack), 
+        # second index is smoothing wavelength to integrate along 
+        # (if we were to smooth spectra to simulate the stacking effect)
+        # We will refer to the indices as x and y in the code
+        if self.have_band_responses:
+            smoothing_nb_obs = np.zeros([wl_grid_obs.shape[0], 
+                                        wl_grid_obs.shape[0]])
+            responses = r_nb(wl_grid_obs)
+            # Minimum weight for a band to consider it covers a
+            # given wavelength. If no band reaches its minimum weight,
+            # we will consider the wavelength out of coverage, and will not
+            # compute the smoothing band
+            nb_weights_min = np.max(responses ** 2, axis=1) / 50
+            for i in range(smoothing_nb_obs.shape[0]):
+                nb_weights = responses[:,i]**2
+                if np.sum(nb_weights > nb_weights_min):
+                    smoothing_nb_obs[i, :] = np.average(responses, axis=0,
+                                                   weights=nb_weights)
+                    
+            # To save memory, we will crop out the extrema of the observed wavelength
+            # grid where the integrated smoothing band is exactly zero
+            # (out of coverage)
+            # Keeping only SED wavelengths with any band coverage
+            wl_inds_x_covered = np.where(np.sum(smoothing_nb_obs, axis=1) > 0)[0]
+            wl_ind_x_min, wl_ind_x_max = wl_inds_x_covered[0] - 1, wl_inds_x_covered[-1] + 1 
+            
+            # Now keeping the smoothing wavelengths taen into account for smoothing 
+            # This will naturally be a slightly larger wavelength range
+            wl_ind_y_min = np.where(np.sum(smoothing_nb_obs[:, :wl_ind_x_min], axis=0) == 0)[0][-1]
+            wl_ind_y_max = np.where(np.sum(smoothing_nb_obs[:, wl_ind_x_max:], axis=0) == 0)[0][0] + wl_ind_x_max
+            
+            # Cropping
+            wl_grid_obs_x = wl_grid_obs[wl_ind_x_min:wl_ind_x_max+1]
+            wl_grid_obs_y = wl_grid_obs[wl_ind_y_min:wl_ind_y_max+1]
+            smoothing_nb_obs = smoothing_nb_obs[wl_ind_x_min:wl_ind_x_max+1,
+                                                wl_ind_y_min:wl_ind_y_max+1]
+            
+            self.wl_grid_obs_x = wl_grid_obs_x
+            self.wl_grid_obs_y = wl_grid_obs_y
+            self.smoothing_nb_obs = smoothing_nb_obs
+            
 
         df[self.nb_labels] = seds
         df[self.nb_err_labels] = seds_err
         self.df = df
+
 
     def load_stack(self, stack_folder):
         '''
@@ -575,6 +636,10 @@ class Stacker():
         self.stacked_seds = xr.open_dataarray(
             f'{self.stack_folder}stacked_seds.nc')
         self.stack_saved = True
+        if os.path.isfile(f'{self.stack_folder}smoothing_bands.nc'):
+            self.smoothing_bands = xr.open_dataarray(
+                f'{self.stack_folder}smoothing_bands.nc')
+
 
     def save_stack(self, stack_folder, overwrite=False):
         '''
@@ -595,7 +660,7 @@ class Stacker():
         '''
         os.makedirs(stack_folder, exist_ok=True)
         self.stack_folder = f'{stack_folder}/'
-        if os.path.exists(f'{self.stack_folder}stacked_seds.nc') and not overwrite:
+        if os.path.isfile(f'{self.stack_folder}stacked_seds.nc') and not overwrite:
             answer = self._query_yes_no(f'stacked_seds.nc in {stack_folder} '
                                         'already exists. Overwrite?')
 
@@ -603,6 +668,10 @@ class Stacker():
                 self.stacked_seds.to_netcdf(
                     f'{self.stack_folder}stacked_seds.nc')
                 self.stack_saved = True
+                if self.use_band_responses:
+                    self.smoothing_bands.to_netcdf(
+                        f'{self.stack_folder}smoothing_bands.nc')
+                
             else:
                 print('Current stack was not saved. Please change stack_folder or'
                       f' manually delete f{stack_folder}/stacked_seds.nc')
@@ -610,6 +679,9 @@ class Stacker():
         else:
             self.stacked_seds.to_netcdf(f'{self.stack_folder}stacked_seds.nc')
             self.stack_saved = True
+            if self.use_band_responses:
+                self.smoothing_bands.to_netcdf(f'{self.stack_folder}smoothing_bands.nc')
+
 
     def return_stack(self):
         '''
@@ -624,6 +696,20 @@ class Stacker():
         '''
 
         return self.stacked_seds
+    
+    def return_smoothing_bands(self):
+        '''
+        Returns the current 'smoothing_bands'
+
+        Returns
+        -------
+        stacked_seds : xarray
+            The xarray object with the smoothing_bands and all the relevant
+            metadata.
+
+        '''
+        
+        return self.smoothing_bands
 
     def column_histogram(self, label,  bins, save=False):
         # why does this return n obj min and its value?
@@ -684,6 +770,7 @@ class Stacker():
         value_obj_min = bin_mid[np.nonzero(counts == n_obj_min)[0]]
 
         return n_obj_min, value_obj_min
+
 
     def to_rest_frame(self, flux_conversion='normalized', use_band_responses=False,
                       wl_rf_step=1, wl_obs_min=None, wl_obs_max=None,
@@ -760,13 +847,10 @@ class Stacker():
             raise Exception(
                 "flux_conversion not understood. Please input 'normalized', 'luminosity' or 'nothing'")
 
-        if use_band_responses:
-            try:
-                self.r_nb
-            except:
-                raise Exception("Response functions of the photometric bands not loaded. "
-                                "Please run 'load_catalog' specifying in 'bands_data' the directory "
-                                "of the .json file that contains the response function data ")
+        if use_band_responses and not self.have_band_responses:
+            raise Exception("Response functions of the photometric bands not loaded. "
+                            "Please run 'load_catalog' specifying in 'bands_data' the directory "
+                            "of the .json file that contains the response function data ")
 
         if not z_min:
             z_min = self.df[self.z_label].min()
@@ -1022,6 +1106,8 @@ class Stacker():
                     rf_seds_err /= lums_vs_z[:, None]
 
                 self.flux_units = u.dimensionless_unscaled
+                
+        # if use__band_responses, 
 
         # other flux conversion cases
         elif flux_conversion == 'normalized':
@@ -1033,7 +1119,29 @@ class Stacker():
         self.rf_seds = rf_seds
         if compute_error:
             self.rf_seds_err = rf_seds_err
+        
+        
+        # If use_band_responses, computing smoothing band in redshift grid
+        if use_band_responses:
+            z_grid_step = 0.02
+            z_grid = np.arange(z_min / z_grid_step, z_max / z_grid_step +1, 1)
+            z_grid *= z_grid_step
+            smoothing_nb_obs_interp = interpolate.RectBivariateSpline(self.wl_grid_obs_x, self.wl_grid_obs_y, 
+                                                                    self.smoothing_nb_obs, kx=1, ky=1)
+            smoothing_nb = np.zeros([z_grid.shape[0], 
+                                       wl_grid.shape[0], wl_grid.shape[0]])
+            for i, z in enumerate(z_grid):
+                smoothing_nb[i, :, :] = smoothing_nb_obs_interp(wl_grid*(1+z), wl_grid*(1+z)) * (1 + z)
+                
+            self.z_grid = z_grid
+            self.z_grid_step = z_grid_step
+            self.smoothing_nb = smoothing_nb
+            z_hist_edg = np.zeros(z_grid.shape[0] + 1)
+            z_hist_edg[:-1] = z_grid - z_grid_step / 2
+            z_hist_edg[-1] = z_grid[-1] + z_grid_step / 2
+            self.z_hist_edg = z_hist_edg
 
+        self.use_band_responses = use_band_responses
         self.wl_grid = wl_grid
         self.flux_conversion = flux_conversion
         self.wl_obs_min = wl_obs_min
@@ -1041,6 +1149,7 @@ class Stacker():
         self.z_min = z_min
         self.z_max = z_max
         self.zs = zs
+
 
     def stack(self, bin_dict={}, weight=None, error_type=None, min_n_obj=0):
         '''
@@ -1186,6 +1295,14 @@ class Stacker():
         stacks_coords = bin_mid_dict.copy()
         stacks_coords['data'] = ['flux', 'flux_error', 'counts']
         stacks_coords['rf_wl'] = self.wl_grid
+        if self.use_band_responses:
+            smoothing_bands_shape = ([len(bin_edg) for bin_edg in bin_dict.values()] 
+                                    + [len(self.wl_grid), len(self.wl_grid)])
+            smoothing_bands_dims = list(bin_dict.keys()) + ['rf_wl', 'rf_wl_smooth']
+            smoothing_bands_coords = bin_mid_dict.copy()
+            smoothing_bands_coords['rf_wl'] = self.wl_grid
+            smoothing_bands_coords['rf_wl_smooth'] = self.wl_grid
+            
 
         attr_dict = {'flux_units': f'{self.flux_units}',
                      'flux_units_latex': f'{self.flux_units:latex_inline}',
@@ -1212,6 +1329,10 @@ class Stacker():
 
         stacked_seds = xr.DataArray(np.zeros(stacks_shape), dims=stacks_dims,
                                     coords=stacks_coords, attrs=attr_dict)
+        if self.use_band_responses:
+            smoothing_bands = xr.DataArray(np.zeros(smoothing_bands_shape), 
+                                           dims=smoothing_bands_dims,
+                                        coords=smoothing_bands_coords, attrs=attr_dict)
 
         # Iterating over all cases and stacking
         it = np.nditer(stacked_seds[..., 0, 0], flags=['multi_index'])
@@ -1221,7 +1342,7 @@ class Stacker():
                     & (self.df[self.z_label].values <= self.z_max))
 
         df_tmp = self.df[select_z]
-        for x in it:
+        for _ in it:
             # Selecting objects for bin
             select = np.ones(len(df_tmp)).astype(bool)
             for i, item in enumerate(it.multi_index):
@@ -1234,6 +1355,19 @@ class Stacker():
 
             rf_seds_tmp = self.rf_seds[select]
             weights_tmp = weights[select]
+            # Computing and storing smoothing band for given stack if using band responses
+            if self.use_band_responses:
+                zs_tmp = self.zs[select]
+                z_hist = np.histogram(zs_tmp, self.z_hist_edg)[0]
+                # Computing smoothing band for given stack
+                smoothing_nb_tmp = np.average(self.smoothing_nb, axis=0, weights=z_hist)
+                # Renormalizing by number of objects
+                renorm = np.trapz(smoothing_nb_tmp, self.wl_grid, axis=1)
+                smoothing_nb_tmp[renorm > 0, :] = (smoothing_nb_tmp[renorm > 0, :] 
+                                                   / renorm[renorm > 0, None])
+                smoothing_bands[it.multi_index] = smoothing_nb_tmp
+
+                
             if use_errors:
                 rf_seds_err_tmp = self.rf_seds_err[select]
 
@@ -1268,16 +1402,20 @@ class Stacker():
                     normalization * (wl_max - wl_min)
 
             # Storing
-            self.stacked_seds = stacked_seds
-            self.stack_sed = stack_sed
-            self.stack_sed_err = stack_sed_err
-            self.stack_counts = stack_counts
+            #self.stacked_seds = stacked_seds
+            #self.stack_sed = stack_sed
+            #self.stack_sed_err = stack_sed_err
+            #self.stack_counts = stack_counts
             stacked_seds[it.multi_index + (0,)] = stack_sed
             stacked_seds[it.multi_index + (1,)] = stack_sed_err
             stacked_seds[it.multi_index + (2,)] = stack_counts
-
+            
+            
         self.stacked_seds = stacked_seds
         self.stack_saved = False
+        if self.use_band_responses:
+            self.smoothing_bands = smoothing_bands
+        
 
     def plot(self, line_label=None, column_label=None, row_label=None,
              counts=False, spectral_lines=False, logscale=False,
