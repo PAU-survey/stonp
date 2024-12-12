@@ -873,7 +873,7 @@ class Stacker():
         wl_rf_min = wl_obs_min / (1 + z_max)
         wl_rf_max = wl_obs_max / (1 + z_min)
         wl_grid = np.arange(wl_rf_min * scaling_wl,
-                            wl_rf_max * scaling_wl + 1, 1)
+                            wl_rf_max * scaling_wl, 1)
         wl_grid /= scaling_wl            
         if self.flux_density == 'frequency':
             fq_grid = (wl_grid * self.wavelength_units).to(
@@ -1717,11 +1717,3 @@ class Stacker():
                 plt.show()
             else:
                 plt.close()
-
-
-if __name__ == '__main__':
-    master_cat_dir = '/home/pablo/observational_data/PAUS_master_catalog/PAUS_master_catalog_zw_fluxes_only_unmasked_galaxies.parquet'
-    st = Stacker()
-    st.load_catalog(master_cat_dir, z_label='zw')
-    st.to_rest_frame(flux_conversion='redshift_normalized', z_min=0.1, z_max=1.5,
-                     show_lum_plot=True)
