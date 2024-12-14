@@ -97,17 +97,16 @@ class Stacker():
 
         return y, y_err
 
-
     @staticmethod
     def _json_loader(bands_data_dir, df=None, sort=True):
         # Loads the .json of band response functions specified
         # Returns band labels, average wavelengths, and interpolated response
         # functions
-        if type(bands_data_dir) != str:
+        if not isinstance(bands_data_dir, str):
             raise TypeError('bands_data_dir must be a string')
-        if type(df) != pd.DataFrame and df is not None:
+        if not isinstance(df, pd.DataFrame) and df is not None:
             raise TypeError('df must be a pandas DataFrame')
-        if type(sort) != bool:
+        if not isinstance(sort, bool):
             raise TypeError('sort must be a boolean')
         with open(bands_data_dir, 'r') as read_file:
             band_responses_raw = json.load(read_file)
@@ -178,6 +177,9 @@ class Stacker():
     @staticmethod
     def _bin_dict_parser(bin_dict):
         # Parses the bin_dict so all bins are nested lists of two elements
+
+        if not isinstance(bin_dict, dict):
+            raise TypeError('bin_dict must be a dictionary')
 
         for key, bin_edgs in bin_dict.items():
             if key[-2:] != '==':

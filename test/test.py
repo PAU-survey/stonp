@@ -51,5 +51,38 @@ class TestJsonLoader(unittest.TestCase):
         self.assertIsInstance(r_nb, scipy.interpolate.interp1d)
         self.assertIsInstance(wl_grid_obs, np.ndarray)
 
+
+class TestBinDictParser(unittest.TestCase):
+    def test_no_args(self):
+        with self.assertRaises(TypeError):
+            Stacker._bin_dict_parser()
+
+    def test_bad_dict_arg(self):
+        with self.assertRaises(TypeError):
+            Stacker._bin_dict_parser(False)
+            Stacker._bin_dict_parser(1)
+            Stacker._bin_dict_parser(1.23)
+            Stacker._bin_dict_parser([])
+
+    def test_returns_type(self):
+        self.assertIsInstance(Stacker._bin_dict_parser(
+            {'test': [1, 2, 3]}), dict)
+
+    def test_dic_struct(self):
+        bins = Stacker._bin_dict_parser(
+            {'test1': [1, 2, 3], 'test2': [4, 5, 6]})
+        self.assertEqual(len(bins), 2)
+        for key in bins:
+            for val in bins[key]:
+                self.assertIsInstance(val, list)
+                self.assertEqual(len(val), 2)
+
+    def test_dict_values(self):
+        bins = Stacker._bin_dict_parser(
+            {'test1': [1, 2, 3], 'test2': [4, 5, 6]})
+        self.assertListEqual(bins['test1'][0], [1, 2])
+        self.assertListEqual(bins['test1'][1], [2, 3])
+        self.assertListEqual(bins['test2'][0], [4, 5])
+        self.assertListEqual(bins['test2'][1], [5, 6])
 if __name__ == "__main__":
     unittest.main()
