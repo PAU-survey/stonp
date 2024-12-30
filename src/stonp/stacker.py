@@ -208,17 +208,18 @@ class Stacker():
 
 
     @staticmethod
-    def _single_plotter(ax, stacked_seds_tmp, kw, line_label=None,
+    def _single_plotter(ax, da_tmp, kw, line_label=None,
                         xlabel=None, ylabel=None, legend_labels=None, title=None,
                         extra_xlabel=None, extra_ylabel=None, counts=False,
+                        plot_smoothed_seds=False,
                         spectral_lines_dict=None, spectral_lines_legend=False,
                         logscale=False, sharey=False):
         # Makes a stacked SED plot on a given axis. Check plot() to understand
         # entry parameters
 
-        x = stacked_seds_tmp['rf_wl'].data
+        x = da_tmp['rf_wl'].data
         if line_label:
-            n_lines = stacked_seds_tmp[line_label].shape[0]
+            n_lines = da_tmp[line_label].shape[0]
         else:
             n_lines = 1
 
@@ -227,12 +228,15 @@ class Stacker():
             if line_label:
                 kw[line_label] = k
 
-            if counts:
-                y = stacked_seds_tmp.isel(**kw).sel(data='counts')
+            if plot_smoothed_seds:
+                y = da_tmp.isel(**kw)
+                ax.step(x, y, color=color, where='mid')
+            elif counts:
+                y = da_tmp.isel(**kw).sel(data='counts')
                 ax.step(x, y, color=color, where='mid')
             else:
-                y = stacked_seds_tmp.isel(**kw).sel(data='flux')
-                y_err = stacked_seds_tmp.isel(**kw).sel(data='flux_error')
+                y = da_tmp.isel(**kw).sel(data='flux')
+                y_err = da_tmp.isel(**kw).sel(data='flux_error')
                 ax.plot(x, y, color=color)
                 ax.fill_between(x, y+y_err, y-y_err, color=color,
                                 alpha=0.3, label='_nolegend_')
@@ -1317,10 +1321,9 @@ class Stacker():
             
 
         attr_dict = {'flux_units': f'{self.flux_units}',
-                     'flux_units_latex': f'{self.flux_units:latex_inline}',
                      'wavelength_units': f'{self.wavelength_units}',
-                     'wavelength_units_latex': f'{self.wavelength_units:latex_inline}',
                      'flux_conversion': self.flux_conversion,
+                     'flux_density': self.flux_density,
                      'z_label': self.z_label, 'min_n_obj': min_n_obj}
         if weight:
             attr_dict['weight'] = weight
@@ -1441,7 +1444,7 @@ class Stacker():
             raise Exception("No smoothing band found. Please compute or load"
                             "a stack with use_band_responses=True when running to_rest_frame()")
             
-        sed_labels, _, sed_interp, wl_grid_sed = self._json_loader(sed_dir, df=None, sort=False)
+        sed_labels, _, sed_interp, wl_grid_sed = self._json_loader(sed_dir, df=None)
         smoothing_bands = self.smoothing_bands
         seds = sed_interp(smoothing_bands.rf_wl_smooth.data)
 
@@ -1468,7 +1471,7 @@ class Stacker():
         
 
     def plot(self, line_label=None, column_label=None, row_label=None,
-             counts=False, smoothed_sed=False, spectral_lines=False, logscale=False,
+             counts=False, plot_smoothed_seds=False, spectral_lines=False, logscale=False,
              wavelength_min=None, wavelength_max=None,
              aspect_ratio=1.62, fig_title=False, show=True, rc_params=None):
         '''
@@ -1537,7 +1540,14 @@ class Stacker():
             raise Exception("No stacked SEDs available. Please stack a loaded"
                             " catalog with stack() or load an xarray"
                             " of stacked SEDs with load_stack()")
-
+            
+        if plot_smoothed_seds:
+            try:
+                self.smoothed_seds
+            except AttributeError:
+                raise Exception("No sed .json has been loaded and smoothed. "
+                                "Please run smooth_sed()")
+            
         if not self.stack_saved:
             raise Exception("The stack has not been saved. Please run"
                             " save_stack() before plotting")
@@ -1552,36 +1562,44 @@ class Stacker():
 
         self._rc_parameters(rc_params=rc_params)
         
-        if smoothed_sed:
-            dataarray = self.smoothed_seds
+        if plot_smoothed_seds:
+            da = self.smoothed_seds
             
         else:
-            datarray = self.stacked_seds
+            da = self.stacked_seds
             
         # Sorting out columns/rows, labels and format
-        xlabel = rf"$\lambda$ ({datarray.attrs['wavelength_units_latex']})"
+        wl_units = u.Unit(da.attrs['wavelength_units'])
+        xlabel = rf"$\lambda$ ({wl_units:latex_inline})"
         
-        if counts:
-            ylabel = 'N obj'
+        if plot_smoothed_seds:
+            ylabel= ''
             
-        elif (datarray.attrs['flux_conversion'] == 'normalized'
-              or datarray.attrs['flux_conversion'] == 'redshift_normalized'):
-            ylabel = 'Normalized flux'
-            
-        elif self.stacked_seds.attrs['flux_conversion'] == 'luminosity':
-            if self.flux_density == 'wavelength':
-                ylabel = rf"$L_\lambda$ ({self.stacked_seds.attrs['flux_units_latex']})"                
-            elif self.flux_density == 'frequency':
-                ylabel = rf"$L_\nu$ ({self.stacked_seds.attrs['flux_units_latex']})"
-                
         else:
-            if self.flux_density == 'wavelength':
-                ylabel = rf"$f_\lambda$ ({self.stacked_seds.attrs['flux_units_latex']})"
-            elif self.flux_density == 'frequency':
-                ylabel = rf"$f_\nu$ ({self.stacked_seds.attrs['flux_units_latex']})"
+            flux_units = u.Unit(da.attrs['flux_units'])
+            if counts:
+                ylabel = 'N obj'
+            
+            elif (da.attrs['flux_conversion'] == 'normalized'
+                  or da.attrs['flux_conversion'] == 'redshift_normalized'):
+                ylabel = 'Normalized flux'
+                
+            elif da.attrs['flux_conversion'] == 'luminosity':
+                if da.attrs['flux_density'] == 'wavelength':
+                    ylabel = rf"$L_\lambda$ ({flux_units:latex_inline})"                
+                elif da.attrs['flux_density'] == 'frequency':
+                    ylabel = rf"$L_\nu$ ({flux_units:latex_inline})"
+                    
+            else:
+                if da.attrs['flux_density'] == 'wavelength':
+                    ylabel = rf"$f_\lambda$ ({flux_units:latex_inline})"
+                elif da.attrs['flux_density'] == 'frequency':
+                    ylabel = rf"$f_\nu$ ({flux_units:latex_inline})"
 
-        fig_labels = list(self.stacked_seds.dims)
-        fig_labels.remove('data')
+        fig_labels = list(da.dims)
+        if not plot_smoothed_seds:
+            fig_labels.remove('data')
+        
         fig_labels.remove('rf_wl')
         if line_label:
             fig_labels.remove(line_label)
@@ -1605,7 +1623,7 @@ class Stacker():
             subplot_label = row_label
 
         if line_label:
-            n_lines = self.stacked_seds[line_label].shape[0]
+            n_lines = da[line_label].shape[0]
             legend_labels = [self._range_label(
                 line_label, i) for i in range(n_lines)]
         else:
@@ -1616,11 +1634,11 @@ class Stacker():
             n_cols = 1
             n_rows = 1
         elif subplot_label:
-            n_cols, n_rows = self._determine_cols_rows(
-                self.stacked_seds[subplot_label].shape[0], 1)
+            n_cols, n_rows = self._determine_cols_rows(da[subplot_label].shape[0], 1)
+            
         else:
-            n_cols = self.stacked_seds[column_label].shape[0]
-            n_rows = self.stacked_seds[row_label].shape[0]
+            n_cols = da[column_label].shape[0]
+            n_rows = da[row_label].shape[0]
 
         if n_cols == 1 and n_rows == 1:
             fontsize = 'large'
@@ -1630,10 +1648,10 @@ class Stacker():
             fontsize = 'xx-large'
 
         plt.rcParams.update({'axes.labelsize': fontsize, 'axes.titlesize': fontsize,
-                            'xtick.labelsize': fontsize, 'ytick.labelsize': fontsize, })
+                            'xtick.labelsize': fontsize, 'ytick.labelsize': fontsize})
 
         # Applying wavelength ranges if specified
-        wl_grid = self.stacked_seds['rf_wl'].data
+        wl_grid = da['rf_wl'].data
         if wavelength_min:
             ind_min = np.argmin(np.abs(wl_grid - wavelength_min))
         else:
@@ -1644,15 +1662,21 @@ class Stacker():
         else:
             ind_max = None
 
-        stacked_seds_cropped = self.stacked_seds[..., ind_min:ind_max]
+        da_cropped = da[..., ind_min:ind_max]
 
         # Iterating over all necessary subplots
-        it = np.nditer(stacked_seds_cropped.isel(
-            **kw, data=0, rf_wl=0), flags=['multi_index'])
+        if plot_smoothed_seds:
+            it = np.nditer(da_cropped.isel(
+                **kw, rf_wl=0), flags=['multi_index'])
+            
+        else:
+            it = np.nditer(da_cropped.isel(
+                **kw, data=0, rf_wl=0), flags=['multi_index'])
+            
         for _ in it:
             inds = it.multi_index
             kw = {label: inds[i] for i, label in enumerate(fig_labels)}
-            stacked_seds_tmp = stacked_seds_cropped.isel(**kw)
+            da_tmp = da_cropped.isel(**kw)
             if self.stacked_seds.attrs['flux_conversion'] == 'normalized':
                 sharey = True
             else:
@@ -1670,8 +1694,11 @@ class Stacker():
 
             if line_label:
                 filename.append(f'l-{line_label}')
-
-            if counts:
+                
+            if plot_smoothed_seds:
+                filename.append('smoothed_seds')
+            
+            elif counts:
                 filename.append('counts')
 
             filename = '_'.join(filename)
@@ -1720,6 +1747,7 @@ class Stacker():
                     i, j = inds
 
                 kw_plot = {'line_label': line_label, 'counts': counts,
+                           'plot_smoothed_seds' : plot_smoothed_seds,
                            'logscale': logscale, 'sharey': sharey}
                 if spectral_lines:
                     kw_plot['spectral_lines_dict'] = spectral_lines_dict
@@ -1727,7 +1755,7 @@ class Stacker():
                 if subplot_label:
                     index = i*n_cols + j
                     kw = {subplot_label: index}
-                    if index >= stacked_seds_tmp[subplot_label].shape[0]:
+                    if index >= da_tmp[subplot_label].shape[0]:
                         break
 
                     title = self._range_label(subplot_label, index)
@@ -1753,7 +1781,7 @@ class Stacker():
                 if i == n_rows - 1 and j == n_cols - 1:
                     kw_plot['spectral_lines_legend'] = True
 
-                self._single_plotter(ax[inds], stacked_seds_tmp, kw, **kw_plot)
+                self._single_plotter(ax[inds], da_tmp, kw, **kw_plot)
 
                 # if self.stacked_seds.attrs['flux_units'].lower() == 'normalized':
                 #    ax[0,0].set_ylim(bottom=max(1e-5, ax[0,0].get_ylim()[0]))
