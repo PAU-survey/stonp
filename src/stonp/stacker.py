@@ -122,6 +122,7 @@ class Stacker():
             band_responses[key]['response'] = np.array(value['response'])
 
         # Computing mean wavelengths and sorting in ascending wavelength order
+        # if specified
         band_mean_wls = {}
         for key, value in band_responses.items():
             wl = np.array(value['wavelength'])
@@ -639,6 +640,10 @@ class Stacker():
         if os.path.isfile(f'{self.stack_folder}smoothing_bands.nc'):
             self.smoothing_bands = xr.open_dataarray(
                 f'{self.stack_folder}smoothing_bands.nc')
+            
+        if os.path.isfile(f'{self.stack_folder}smoothed_seds.nc'):
+            self.smoothed_seds = xr.open_dataarray(
+                f'{self.stack_folder}smoothed_seds.nc')
 
 
     def save_stack(self, stack_folder, overwrite=False):
@@ -671,6 +676,13 @@ class Stacker():
                 if self.use_band_responses:
                     self.smoothing_bands.to_netcdf(
                         f'{self.stack_folder}smoothing_bands.nc')
+                    
+                try:
+                    self.smoohted_seds.to_netcdf(
+                        f'{self.stack_folder}smoothed_seds.nc')
+                    
+                except AttributeError:
+                    pass
                 
             else:
                 print('Current stack was not saved. Please change stack_folder or'
@@ -1415,10 +1427,48 @@ class Stacker():
         self.stack_saved = False
         if self.use_band_responses:
             self.smoothing_bands = smoothing_bands
+            
+            
+    def smooth_sed(self, sed_dir):
+        # function to smooth a given SED as a .json. Write docstring later
+        # will be saved on stack folder
+        # if it's run again on the same stack, current smoothed sed will be overwritten
+        
+        try:
+            self.smoothing_bands
+            
+        except AttributeError:
+            raise Exception("No smoothing band found. Please compute or load"
+                            "a stack with use_band_responses=True when running to_rest_frame()")
+            
+        sed_labels, _, sed_interp, wl_grid_sed = self._json_loader(sed_dir, df=None, sort=False)
+        smoothing_bands = self.smoothing_bands
+        seds = sed_interp(smoothing_bands.rf_wl_smooth.data)
+
+        # Smoothing all of them at once (broadcasting and integrating)
+        axis_to_expand = list(np.arange(1, smoothing_bands.ndim))
+        seds_expanded = np.expand_dims(seds, axis=axis_to_expand)
+        smoothed_seds_data = np.trapz(seds_expanded * smoothing_bands.data,
+                                      x=smoothing_bands.rf_wl_smooth.data, axis=-1)
+        
+        # Saving to xarray
+        smoothed_seds = self.stacked_seds.copy(deep=True)
+        # Expanding extra dim for all SEDs in the .json
+        smoothed_seds = smoothed_seds.expand_dims(dim={'SED' : sed_labels}, 
+                                                  axis=0).copy(deep=True)
+        # Dropping flux error and counts
+        smoothed_seds = smoothed_seds.sel(data='flux')
+        for i, sed_label in enumerate(sed_labels):
+            smoothed_seds[i, ...] = smoothed_seds_data[i, ...]
+            
+        
+        self.smoothed_seds = smoothed_seds
+        
+        
         
 
     def plot(self, line_label=None, column_label=None, row_label=None,
-             counts=False, spectral_lines=False, logscale=False,
+             counts=False, smoothed_sed=False, spectral_lines=False, logscale=False,
              wavelength_min=None, wavelength_max=None,
              aspect_ratio=1.62, fig_title=False, show=True, rc_params=None):
         '''
@@ -1501,14 +1551,21 @@ class Stacker():
                                        'MgII': [280]}
 
         self._rc_parameters(rc_params=rc_params)
-
+        
+        if smoothed_sed:
+            dataarray = self.smoothed_seds
+            
+        else:
+            datarray = self.stacked_seds
+            
         # Sorting out columns/rows, labels and format
-        xlabel = rf"$\lambda$ ({self.stacked_seds.attrs['wavelength_units_latex']})"
+        xlabel = rf"$\lambda$ ({datarray.attrs['wavelength_units_latex']})"
+        
         if counts:
             ylabel = 'N obj'
             
-        elif (self.stacked_seds.attrs['flux_conversion'] == 'normalized'
-              or self.stacked_seds.attrs['flux_conversion'] == 'redshift_normalized'):
+        elif (datarray.attrs['flux_conversion'] == 'normalized'
+              or datarray.attrs['flux_conversion'] == 'redshift_normalized'):
             ylabel = 'Normalized flux'
             
         elif self.stacked_seds.attrs['flux_conversion'] == 'luminosity':
