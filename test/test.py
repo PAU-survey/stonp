@@ -182,8 +182,10 @@ class TestStonp(unittest.TestCase):
         stack_dirname = 'stack_test_wavelength_density_luminosity'
         flux_units = 'erg / (s cm2 nm)'
 
+        sys.stdout = None
         self.st.load_catalog(mock_filename, bands_data=cwd +
                              '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='luminosity',
                               use_band_responses=True)
         self.st.stack(bin_dict={'template_number==': self.template_numbers},
@@ -227,8 +229,10 @@ class TestStonp(unittest.TestCase):
         stack_dirname = 'stack_test_wavelength_density_normalized'
         flux_units = 'erg / (s cm2 nm)'
 
+        sys.stdout = None
         self.st.load_catalog(mock_filename, bands_data=cwd +
                              '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='normalized',
                               use_band_responses=True)
         self.st.stack(bin_dict={'template_number==': self.template_numbers},
@@ -273,8 +277,10 @@ class TestStonp(unittest.TestCase):
         stack_dirname = 'stack_test_frequency_density_luminosity'
         flux_units = 'erg / (s cm2 Hz)'
 
+        sys.stdout = None
         self.st.load_catalog(mock_filename, bands_data=cwd +
                              '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='luminosity',
                               use_band_responses=True)
         self.st.stack(bin_dict={'template_number==': self.template_numbers},
@@ -319,8 +325,10 @@ class TestStonp(unittest.TestCase):
         stack_dirname = 'stack_test_frequency_density_normalized'
         flux_units = 'erg / (s cm2 Hz)'
 
+        sys.stdout = None
         self.st.load_catalog(mock_filename, bands_data=cwd +
                              '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='normalized',
                               use_band_responses=True)
         self.st.stack(bin_dict={'template_number==': self.template_numbers},
