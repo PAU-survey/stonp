@@ -103,6 +103,12 @@ class Stacker():
         # Loads the .json of band response functions specified
         # Returns band labels, average wavelengths, and interpolated response
         # functions
+        # If wavelength units are not specified in the .json, they will be assumed
+        # to be nanometers
+        # If flux units are not specified in the .json, they will be assumed to
+        # be dimensionless
+        # Flux units only need to be specified for the first SED units it finds;
+        # stonp will assume all the subsequent SEDs have the same flux units
         with open(bands_data_dir, 'r') as read_file:
             band_responses_raw = json.load(read_file)
 
@@ -116,11 +122,27 @@ class Stacker():
             # Otherwise we'll add all bands
             else:
                 band_responses[key] = value
-
+        
+        flux_units = None
         for key, value in band_responses.items():
             band_responses[key]['wavelength'] = np.array(value['wavelength'])
             band_responses[key]['response'] = np.array(value['response'])
-
+            
+            # Converting wavelength to nms, if they're different
+            try: 
+                wav_units = u.Unit(value['wav_units'])
+                band_responses[key]['wavelength'] *= wav_units.to('nm')
+                
+            except KeyError:
+                pass
+                
+            # Checking flux units if we've haven't found any yet
+            if not flux_units:
+                try:
+                    flux_units = value['flux_units']
+                except KeyError:
+                    pass
+                    
         # Computing mean wavelengths and sorting in ascending wavelength order
         # if specified
         band_mean_wls = {}
@@ -128,6 +150,7 @@ class Stacker():
             wl = np.array(value['wavelength'])
             r = np.array(value['response'])
             band_mean_wls[key] = np.trapz(wl * r, wl) / np.trapz(r, wl)
+        
 
         if sort:
             inds = np.argsort(list(band_mean_wls.values()))
@@ -149,7 +172,7 @@ class Stacker():
         wl_grid_obs = np.arange(wl_bands_min / wl_bands_step,
                                   wl_bands_max / wl_bands_step + 1) * wl_bands_step
 
-        # Interpolating to a single array the band responses
+        # Interpolating to a single array the band responses, and renormalizing just in case
         r_nb = np.zeros([len(band_responses), wl_grid_obs.shape[0]])
         i = 0
         for value in band_responses.values():
@@ -167,7 +190,7 @@ class Stacker():
 
         #maybe we could include something to crop unnecessary wavelengths 
         # in wl_grid_obs and save memory when computing smoothing band
-        return nb_labels, wl_nb, r_nb, wl_grid_obs 
+        return nb_labels, wl_nb, r_nb, wl_grid_obs, flux_units
 
 
     @staticmethod
@@ -208,7 +231,7 @@ class Stacker():
 
 
     @staticmethod
-    def _single_plotter(ax, da_tmp, kw, line_label=None,
+    def _single_plotter(ax, da_tmp, kw, wl_units='nm', line_label=None,
                         xlabel=None, ylabel=None, legend_labels=None, title=None,
                         extra_xlabel=None, extra_ylabel=None, counts=False,
                         plot_smoothed_seds=False,
@@ -217,7 +240,7 @@ class Stacker():
         # Makes a stacked SED plot on a given axis. Check plot() to understand
         # entry parameters
 
-        x = da_tmp['rf_wl'].data
+        x = da_tmp['rf_wl'].data * u.nm.to(wl_units)
         if line_label:
             n_lines = da_tmp[line_label].shape[0]
         else:
@@ -410,8 +433,7 @@ class Stacker():
 
     def load_catalog(self, catalog, max_nan_bands=0, z_label='zb',
                      fill_nans='interpolated', bands_data=None,
-                     bands_error_suffix='_error', flux_units='erg / (s cm2 nm)',
-                     wavelength_units='nm'):
+                     bands_error_suffix='_error', flux_units='erg / (s cm2 nm)'):
         '''
         Loads a photometric galaxy catalog to stack.
 
@@ -456,10 +478,6 @@ class Stacker():
             wavelength density or spectral flux frequency density. If string, 
             must be compatible with the `astropy.units` string format. 
             The default is 'erg / (s cm2 nm)'.
-        wavelength_units : str or astropy `unit` object, optional
-            The wavelength units of the bands. If string, must be
-            compatible with the `astropy.units` string format. Does not need to
-            match the wavelength units of `flux_units`. The default is 'nm'.
 
         Returns
         -------
@@ -470,7 +488,6 @@ class Stacker():
         self.max_nan_bands = max_nan_bands
         self.z_label = z_label
         self.flux_units_catalog = u.Unit(flux_units)
-        self.wavelength_units = u.Unit(wavelength_units)
 
         # Checking if flux units are wavelength density or frequency density
         if 'spectral flux density wav' in self.flux_units_catalog.physical_type:
@@ -533,7 +550,7 @@ class Stacker():
             self.have_band_responses = False
 
         elif isinstance(bands_data, str):
-            nb_labels, wl_nb, r_nb, wl_grid_obs = self._json_loader(bands_data, df=df)
+            nb_labels, wl_nb, r_nb, wl_grid_obs, _ = self._json_loader(bands_data, df=df)
 
             self.nb_labels = nb_labels
             self.wl_nb = wl_nb
@@ -892,7 +909,7 @@ class Stacker():
                             wl_rf_max * scaling_wl, 1)
         wl_grid /= scaling_wl            
         if self.flux_density == 'frequency':
-            fq_grid = (wl_grid * self.wavelength_units).to(
+            fq_grid = (wl_grid * u.nm).to(
                 self.frequency_units, equivalencies=u.spectral())
             fq_grid = fq_grid.value
         
@@ -1321,7 +1338,7 @@ class Stacker():
             
 
         attr_dict = {'flux_units': f'{self.flux_units}',
-                     'wavelength_units': f'{self.wavelength_units}',
+                     'wavelength_units': 'nm',
                      'flux_conversion': self.flux_conversion,
                      'flux_density': self.flux_density,
                      'z_label': self.z_label, 'min_n_obj': min_n_obj}
@@ -1444,7 +1461,7 @@ class Stacker():
             raise Exception("No smoothing band found. Please compute or load"
                             "a stack with use_band_responses=True when running to_rest_frame()")
             
-        sed_labels, _, sed_interp, wl_grid_sed = self._json_loader(sed_dir, df=None)
+        sed_labels, _, sed_interp, wl_grid_sed, flux_units = self._json_loader(sed_dir, df=None)
         smoothing_bands = self.smoothing_bands
         seds = sed_interp(smoothing_bands.rf_wl_smooth.data)
 
@@ -1464,6 +1481,7 @@ class Stacker():
         for i, sed_label in enumerate(sed_labels):
             smoothed_seds[i, ...] = smoothed_seds_data[i, ...]
             
+        smoothed_seds.attrs['flux_units'] = flux_units
         
         self.smoothed_seds = smoothed_seds
         
@@ -1472,7 +1490,7 @@ class Stacker():
 
     def plot(self, line_label=None, column_label=None, row_label=None,
              counts=False, plot_smoothed_seds=False, spectral_lines=False, logscale=False,
-             wavelength_min=None, wavelength_max=None,
+             wavelength_min=None, wavelength_max=None, wavelength_units=None,
              aspect_ratio=1.62, fig_title=False, show=True, rc_params=None):
         '''
         Plots the stacked SEDs from the `stacked_seds` xarray.
@@ -1569,11 +1587,15 @@ class Stacker():
             da = self.stacked_seds
             
         # Sorting out columns/rows, labels and format
-        wl_units = u.Unit(da.attrs['wavelength_units'])
+        if wavelength_units:
+            wl_units = u.Unit(wavelength_units)
+        else:
+            wl_units = u.Unit(da.attrs['wavelength_units'])
+            
         xlabel = rf"$\lambda$ ({wl_units:latex_inline})"
         
         if plot_smoothed_seds:
-            ylabel= ''
+            ylabel= da.attrs['flux_units']
             
         else:
             flux_units = u.Unit(da.attrs['flux_units'])
@@ -1780,6 +1802,8 @@ class Stacker():
                     kw_plot['legend_labels'] = legend_labels
                 if i == n_rows - 1 and j == n_cols - 1:
                     kw_plot['spectral_lines_legend'] = True
+                    
+                kw_plot['wl_units'] = 'wl_units'
 
                 self._single_plotter(ax[inds], da_tmp, kw, **kw_plot)
 
