@@ -131,7 +131,7 @@ class Stacker():
         for key, value in band_responses.items():
             wl = np.array(value['wavelength'])
             r = np.array(value['response'])
-            band_mean_wls[key] = np.trapz(wl * r, wl) / np.trapz(r, wl)
+            band_mean_wls[key] = np.trapezoid(wl * r, wl) / np.trapezoid(r, wl)
 
         if sort:
             inds = np.argsort(list(band_mean_wls.values()))
@@ -159,7 +159,7 @@ class Stacker():
         for value in band_responses.values():
             r_nb[i, :] = np.interp(wl_grid_obs, value['wavelength'], value['response'],
                                    left=0, right=0)
-            r_nb[i, :] /= np.trapz(r_nb[i, :], wl_grid_obs)
+            r_nb[i, :] /= np.trapezoid(r_nb[i, :], wl_grid_obs)
             i += 1
 
         # Computing the interpolation object
@@ -955,14 +955,14 @@ class Stacker():
                 if self.flux_density == 'wavelength':
                     # Since we're normalizing, we don't care if wavelength units
                     # of flux 
-                    norm = np.trapz(rf_sed[select], wl_grid[select])
+                    norm = np.trapezoid(rf_sed[select], wl_grid[select])
                     wl_span = wl_grid[select][-1] - wl_grid[select][0]
                     rf_sed = rf_sed / norm * wl_span  # norm of rest-frame SED equal to wavelength span
                     if compute_error:
                         rf_sed_err = rf_sed_err / norm * wl_span
 
                 elif self.flux_density == 'frequency':
-                    norm = -np.trapz(rf_sed[select], fq_grid[select])
+                    norm = -np.trapezoid(rf_sed[select], fq_grid[select])
                     fq_span = fq_grid[select][0] - fq_grid[select][-1]
                     rf_sed = rf_sed / norm * fq_span  # norm of rest-frame SED equal to wavelength span
                     if compute_error:
@@ -1003,10 +1003,10 @@ class Stacker():
             elif flux_conversion == 'redshift_normalized':
                 # Computing mean luminosity per wide redshift bin
                 if self.flux_density == 'wavelength':
-                    lums = np.trapz(rf_seds, wl_grid, axis=1).data
+                    lums = np.trapezoid(rf_seds, wl_grid, axis=1).data
                     
                 elif self.flux_density == 'frequency':    
-                    lums = np.trapz(rf_seds, fq_grid, axis=1).data
+                    lums = np.trapezoid(rf_seds, fq_grid, axis=1).data
 
                 z_bin_edg = np.linspace(z_min, z_max, n_bins_lum_vs_z+1)
                 z_bin_mid = (z_bin_edg[1:] + z_bin_edg[:-1]) / 2
@@ -1370,7 +1370,7 @@ class Stacker():
                 # Computing smoothing band for given stack
                 smoothing_nb_tmp = np.average(self.smoothing_nb, axis=0, weights=z_hist)
                 # Renormalizing by number of objects
-                renorm = np.trapz(smoothing_nb_tmp, self.wl_grid, axis=1)
+                renorm = np.trapezoid(smoothing_nb_tmp, self.wl_grid, axis=1)
                 smoothing_nb_tmp[renorm > 0, :] = (smoothing_nb_tmp[renorm > 0, :] 
                                                    / renorm[renorm > 0, None])
                 smoothing_bands[it.multi_index] = smoothing_nb_tmp
@@ -1401,8 +1401,8 @@ class Stacker():
 
             # renormalizing if the rest-frame shift was normalized. Just in case
             if self.flux_conversion == 'normalized':
-                #normalization = np.trapz(stack_sed, self.wl_grid[~stack_sed.mask])
-                normalization = np.trapz(stack_sed, self.wl_grid)
+                #normalization = np.trapezoid(stack_sed, self.wl_grid[~stack_sed.mask])
+                normalization = np.trapezoid(stack_sed, self.wl_grid)
                 wl_max = self.wl_grid[~stack_sed.mask][-1]
                 wl_min = self.wl_grid[~stack_sed.mask][0]
                 stack_sed = stack_sed / normalization * (wl_max - wl_min)
