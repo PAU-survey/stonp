@@ -1803,7 +1803,7 @@ class Stacker():
                 if i == n_rows - 1 and j == n_cols - 1:
                     kw_plot['spectral_lines_legend'] = True
                     
-                kw_plot['wl_units'] = 'wl_units'
+                kw_plot['wl_units'] = wl_units
 
                 self._single_plotter(ax[inds], da_tmp, kw, **kw_plot)
 
