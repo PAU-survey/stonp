@@ -11,6 +11,7 @@ from astropy.cosmology import Planck18 as cosmo
 sys.path.append('../src/stonp/')
 import stonp
 cwd = os.getcwd() + '/'
+repo_home = cwd + '../'
 
 
 class TestJsonLoader(unittest.TestCase):
@@ -32,32 +33,34 @@ class TestJsonLoader(unittest.TestCase):
     def test_bad_df_arg(self):
         with self.assertRaises(TypeError):
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', df=True)
+                repo_home+'filters/test_bands.json', df=True)
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', df='a')
-            stonp.Stacker._json_loader(cwd+'../filters/test_bands.json', df=7)
+                repo_home+'filters/test_bands.json', df='a')
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', df=1.23)
-            stonp.Stacker._json_loader(cwd+'../filters/test_bands.json', df=[])
+                repo_home+'filters/test_bands.json', df=7)
+            stonp.Stacker._json_loader(
+                repo_home+'filters/test_bands.json', df=1.23)
+            stonp.Stacker._json_loader(
+                repo_home+'filters/test_bands.json', df=[])
 
     def test_bad_sort_arg(self):
         with self.assertRaises(TypeError):
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', sort='a')
+                repo_home+'filters/test_bands.json', sort='a')
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', sort=1)
+                repo_home+'filters/test_bands.json', sort=1)
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', sort=1.2)
+                repo_home+'filters/test_bands.json', sort=1.2)
             stonp.Stacker._json_loader(
-                cwd+'../filters/test_bands.json', sort=[])
+                repo_home+'filters/test_bands.json', sort=[])
 
     def test_returns_len(self):
         self.assertEqual(len(stonp.Stacker._json_loader(
-            cwd+'../filters/test_bands.json')), 4)
+            repo_home+'filters/test_bands.json')), 4)
 
     def test_returns_type(self):
         nb_labels, wl_nb, r_nb, wl_grid_obs = stonp.Stacker._json_loader(
-            cwd+'../filters/test_bands.json')
+            repo_home+'filters/test_bands.json')
         self.assertIsInstance(nb_labels, list)
         self.assertIsInstance(wl_nb, np.ndarray)
         self.assertIsInstance(r_nb, scipy.interpolate.interp1d)
@@ -168,7 +171,7 @@ class TestStonp(unittest.TestCase):
     def setUp(self):
         self.st = stonp.Stacker()
         template_numbers, _, _, _ = self.st._json_loader(
-            cwd+'../spectra/blanton2003_sed_templates.json', sort=False)
+            repo_home+'spectra/blanton2003_sed_templates.json', sort=False)
         self.template_numbers = [int(template_number)
                                  for template_number in template_numbers]
 
@@ -183,8 +186,8 @@ class TestStonp(unittest.TestCase):
         flux_units = 'erg / (s cm2 nm)'
 
         sys.stdout = None
-        self.st.load_catalog(mock_filename, bands_data=cwd +
-                             '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        self.st.load_catalog(mock_filename, bands_data=repo_home +
+                             'filters/test_bands.json', z_label='z', flux_units=flux_units)
         sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='luminosity',
                               use_band_responses=True)
@@ -230,8 +233,8 @@ class TestStonp(unittest.TestCase):
         flux_units = 'erg / (s cm2 nm)'
 
         sys.stdout = None
-        self.st.load_catalog(mock_filename, bands_data=cwd +
-                             '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        self.st.load_catalog(mock_filename, bands_data=repo_home +
+                             'filters/test_bands.json', z_label='z', flux_units=flux_units)
         sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='normalized',
                               use_band_responses=True)
@@ -279,8 +282,8 @@ class TestStonp(unittest.TestCase):
         flux_units = 'erg / (s cm2 Hz)'
 
         sys.stdout = None
-        self.st.load_catalog(mock_filename, bands_data=cwd +
-                             '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        self.st.load_catalog(mock_filename, bands_data=repo_home +
+                             'filters/test_bands.json', z_label='z', flux_units=flux_units)
         sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='luminosity',
                               use_band_responses=True)
@@ -327,8 +330,8 @@ class TestStonp(unittest.TestCase):
         flux_units = 'erg / (s cm2 Hz)'
 
         sys.stdout = None
-        self.st.load_catalog(mock_filename, bands_data=cwd +
-                             '../filters/test_bands.json', z_label='z', flux_units=flux_units)
+        self.st.load_catalog(mock_filename, bands_data=repo_home +
+                             'filters/test_bands.json', z_label='z', flux_units=flux_units)
         sys.stdout = sys.__stdout__
         self.st.to_rest_frame(flux_conversion='normalized',
                               use_band_responses=True)
@@ -385,9 +388,9 @@ def createMockFile(spectral_density, constant_luminosity):
     lum_std = 5e40
 
     band_names, wl_nb, r_nb, _ = stonp.Stacker._json_loader(
-        cwd+'../filters/test_bands.json')
+        repo_home+'filters/test_bands.json')
     template_numbers, _, r_sed, _ = stonp.Stacker._json_loader(
-        cwd+'../spectra/blanton2003_sed_templates.json', sort=False)
+        repo_home+'spectra/blanton2003_sed_templates.json', sort=False)
     template_numbers = [int(template_number)
                         for template_number in template_numbers]
     rng = np.random.default_rng(seed=996)
