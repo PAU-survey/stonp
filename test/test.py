@@ -163,10 +163,12 @@ class TestStonp(unittest.TestCase):
                 stack_dirname += "luminosity"
             else:
                 stack_dirname += "normalized"
-
-            for fname in sorted(os.listdir(os.path.join(cwd, stack_dirname))):
-                os.remove(os.path.join(cwd, stack_dirname, fname))
-            os.rmdir(stack_dirname)
+            try:
+                for fname in sorted(os.listdir(os.path.join(cwd, stack_dirname))):
+                    os.remove(os.path.join(cwd, stack_dirname, fname))
+                os.rmdir(stack_dirname)
+            except FileNotFoundError:
+                pass
 
     def setUp(self):
         self.st = stonp.Stacker()
@@ -247,15 +249,15 @@ class TestStonp(unittest.TestCase):
         self.st.plot(line_label='template_number', logscale=True,
                      wavelength_min=200, wavelength_max=700, show=False)
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'l-template_number.png')), '347f872e9330a86ba0f92f43beef421f')
+            cwd, stack_dirname, 'l-template_number.png')), 'ca21e29231f28285e34cb3cd8082884b')
         self.st.plot(column_label='template_number',
                      counts=True, aspect_ratio=2, show=False)
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number_counts.png')), '4e92011a5e1325d1f6e83d92fc71cb2b')
+            cwd, stack_dirname, 's-template_number_counts.png')), 'eaa22decd42c53006c7cc43f28b12250')
         self.st.plot(row_label='template_number', spectral_lines=True,
                      fig_title=r'test $\alpha$', show=False)
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number.png')), 'a4c4bc1bd45c8977090d52481e8710f4')
+            cwd, stack_dirname, 's-template_number.png')), 'eb195edca02c4570722f3bfbfe7e8d0b')
         self.st.load_stack(stack_dirname)
         smoothing_bands = self.st.return_smoothing_bands()
         stack = self.st.return_stack()
@@ -269,9 +271,9 @@ class TestStonp(unittest.TestCase):
         self.assertEqual(np.prod(np.isclose(norms, wl_span)), 1)
 
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'smoothing_bands.nc')), '86e49f83e3ee938ab1f8843dcbc0cc77')
+            cwd, stack_dirname, 'smoothing_bands.nc')), '8033871b7019cf957ac089f77773504f')
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'stacked_seds.nc')), 'c13f1cd14aeef1d24aba8ba0747a4cd0')
+            cwd, stack_dirname, 'stacked_seds.nc')), '714d40f0a15d1ab3b3539c2b034981c8')
 
         os.remove(mock_filename)
 
@@ -344,15 +346,15 @@ class TestStonp(unittest.TestCase):
         self.st.plot(line_label='template_number', logscale=True,
                      wavelength_min=200, wavelength_max=700, show=False)
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'l-template_number.png')), '49d10212b1b58b177a6e3accbed14757')
+            cwd, stack_dirname, 'l-template_number.png')), 'ad88a13a457828b3fba300c6de23559d')
         self.st.plot(column_label='template_number',
                      counts=True, aspect_ratio=2, show=False)
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number_counts.png')), '4e92011a5e1325d1f6e83d92fc71cb2b')
+            cwd, stack_dirname, 's-template_number_counts.png')), '602da450279ae0a4ea6552838bf0d53b')
         self.st.plot(row_label='template_number', spectral_lines=True,
                      fig_title=r'test $\alpha$', show=False)
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number.png')), 'cfb2bb6fb28e296ed865784e8653b38f')
+            cwd, stack_dirname, 's-template_number.png')), 'd6e9b4e125ca7f7d64fb69ba5d3bcbbc')
         self.st.load_stack(stack_dirname)
         smoothing_bands = self.st.return_smoothing_bands()
         stack = self.st.return_stack()
@@ -366,9 +368,9 @@ class TestStonp(unittest.TestCase):
         self.assertEqual(np.prod(np.isclose(norms, wl_span)), 1)
 
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'smoothing_bands.nc')), '86e49f83e3ee938ab1f8843dcbc0cc77')
+            cwd, stack_dirname, 'smoothing_bands.nc')), 'b46b02aee977138730aa0d8c060b5e6c')
         self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'stacked_seds.nc')), '0e28e2e2ad4dddfb570352aeeec5ffe3')
+            cwd, stack_dirname, 'stacked_seds.nc')), '396ab9ffe50e6df37f3bf569b7786579')
 
         os.remove(mock_filename)
 
@@ -487,6 +489,8 @@ def createMockFile(spectral_density, constant_luminosity):
         flux_total = np.sum(nb_fluxes, axis=1)
         if constant_luminosity is False:
             flux_cut = np.percentile(flux_total, 5)
+            select = flux_total >= flux_cut
+            df_tmp = df_tmp[select]
 
         dfs.append(df_tmp)
 
