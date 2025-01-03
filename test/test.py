@@ -263,7 +263,7 @@ class TestStonp(unittest.TestCase):
         self.assertEqual(stack.data.shape[0], len(self.template_numbers))
         norms = np.trapezoid(stack.data[:, 0, :], stack.rf_wl.data, axis=-1)
         wl_span = stack.rf_wl.data[-1] - stack.rf_wl.data[0]
-        self.assertGreaterEqual(np.prod(np.isclose(norms, wl_span)), 0)
+        self.assertEqual(np.prod(np.isclose(norms, wl_span)), 1)
 
         self.assertEqual(calculate_md5(os.path.join(
             cwd, stack_dirname, 'smoothing_bands.nc')), '86e49f83e3ee938ab1f8843dcbc0cc77')
@@ -360,7 +360,7 @@ class TestStonp(unittest.TestCase):
         self.assertEqual(stack.data.shape[0], len(self.template_numbers))
         norms = np.trapezoid(stack.data[:, 0, :], stack.rf_wl.data, axis=-1)
         wl_span = stack.rf_wl.data[-1] - stack.rf_wl.data[0]
-        self.assertGreaterEqual(np.prod(np.isclose(norms, wl_span)), 0)
+        self.assertEqual(np.prod(np.isclose(norms, wl_span)), 1)
 
         self.assertEqual(calculate_md5(os.path.join(
             cwd, stack_dirname, 'smoothing_bands.nc')), '86e49f83e3ee938ab1f8843dcbc0cc77')
