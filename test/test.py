@@ -213,7 +213,7 @@ class TestStonp(unittest.TestCase):
         # test shape
         self.assertGreaterEqual(np.prod(stack.data[:, 1, :]), 0)
         self.assertEqual(stack.data.shape[0], len(self.template_numbers))
-        norms = np.trapezoid(stack.data[:, 0:], stack.rf_wl.data, axis=-1)
+        norms = np.trapezoid(stack.data[:, 0, :], stack.rf_wl.data, axis=-1)
         self.assertGreater(np.prod(norms), 0)
 
         self.assertEqual(calculate_md5(os.path.join(
@@ -261,7 +261,7 @@ class TestStonp(unittest.TestCase):
         # test shape
         self.assertGreaterEqual(np.prod(stack.data[:, 1, :]), 0)
         self.assertEqual(stack.data.shape[0], len(self.template_numbers))
-        norms = np.trapezoid(stack.data[:, 0:], stack.rf_wl.data, axis=-1)
+        norms = np.trapezoid(stack.data[:, 0, :], stack.rf_wl.data, axis=-1)
         wl_span = stack.rf_wl.data[-1] - stack.rf_wl.data[0]
         self.assertGreaterEqual(np.prod(np.isclose(norms, wl_span)), 0)
 
@@ -310,7 +310,7 @@ class TestStonp(unittest.TestCase):
         # test shape
         self.assertGreaterEqual(np.prod(stack.data[:, 1, :]), 0)
         self.assertEqual(stack.data.shape[0], len(self.template_numbers))
-        norms = np.trapezoid(stack.data[:, 0:], stack.rf_wl.data, axis=-1)
+        norms = np.trapezoid(stack.data[:, 0, :], stack.rf_wl.data, axis=-1)
         self.assertGreater(np.prod(norms), 0)
 
         self.assertEqual(calculate_md5(os.path.join(
@@ -358,7 +358,7 @@ class TestStonp(unittest.TestCase):
         # test shape
         self.assertGreaterEqual(np.prod(stack.data[:, 1, :]), 0)
         self.assertEqual(stack.data.shape[0], len(self.template_numbers))
-        norms = np.trapezoid(stack.data[:, 0:], stack.rf_wl.data, axis=-1)
+        norms = np.trapezoid(stack.data[:, 0, :], stack.rf_wl.data, axis=-1)
         wl_span = stack.rf_wl.data[-1] - stack.rf_wl.data[0]
         self.assertGreaterEqual(np.prod(np.isclose(norms, wl_span)), 0)
 
