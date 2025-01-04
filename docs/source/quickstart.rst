@@ -4,7 +4,7 @@ Getting started
 ===============
 
 
-stonp is a module that loads photometric galaxy catalogs and stacks their data to obtain average SEDs, which are stored in a :ref:`stacked_seds <stacked_seds>` array. This is all done through a single object, the :ref:`Stacker <stacker>` class Each `Stacker` instance may contain a single photometric catalog, and produces a single `stacked_seds` array. Therefore, in order to work simulatenously with different catalogs or different stacking configurations, different `Stacker` instances must be created.
+stonp is a module that loads photometric galaxy catalogs and stacks their data to obtain average SEDs, which are stored in a :ref:`stacked_seds <stacked_seds>` array. This is all done through a single object, the :ref:`Stacker <stacker>` class Each `Stacker` instance may contain a single photometric catalog, and produces a single `stacked_seds` array. Therefore, in order to work simultaneously with different catalogs or different stacking configurations, different `Stacker` instances must be created.
 
 
 To import stonp and create a new `Stacker` instance, just type::

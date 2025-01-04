@@ -201,7 +201,7 @@ class Stacker():
     @staticmethod
     def _determine_cols_rows(n_subplots, aspect_ratio):
         # Determines the number of columns a rows for a plot with a given
-        # number of subplots and aspect ratio (assmuming all subplots square)
+        # number of subplots and aspect ratio (assuming all subplots square)
 
         n_cols = int(np.sqrt(n_subplots) * aspect_ratio)
         n_rows = int(np.sqrt(n_subplots) / aspect_ratio)
@@ -983,7 +983,7 @@ class Stacker():
             rf_seds_err = np.ma.array(rf_seds_err, mask=np.isnan(rf_seds))
 
         # if flux_conversion = 'luminosity' or flux_conversion == 'redshfit_normalized',
-        # computing luminosity distances anc converting fluxes to luminosities
+        # computing luminosity distances and converting fluxes to luminosities
         if flux_conversion == 'luminosity' or flux_conversion == 'redshift_normalized':
             distance_ind = self.flux_units_catalog.powers.index(-2)
             distance_units = self.flux_units_catalog.bases[distance_ind]
@@ -1031,7 +1031,7 @@ class Stacker():
                 z_min = z_bin_mid[0]
                 z_max = z_bin_mid[-1]
                 
-                # Cropping wavelenght grid to new redshift limits
+                # Cropping wavelength grid to new redshift limits
                 wl_ind_min = np.argmin(np.abs(wl_grid - wl_obs_min / (1 + z_max)))
                 wl_ind_max = np.argmin(np.abs(wl_grid - wl_obs_max / (1 + z_min)))
                 wl_grid = wl_grid[wl_ind_min:wl_ind_max+1]
@@ -1204,7 +1204,7 @@ class Stacker():
 
         '''
 
-        # Pasing the input and checking that everything has been computed
+        # Passing the input and checking that everything has been computed
         try:
             self.rf_seds
         except AttributeError:
