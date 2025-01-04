@@ -172,7 +172,7 @@ class TestStonp(unittest.TestCase):
 
     def setUp(self):
         self.st = stonp.Stacker()
-        template_numbers, _, _, _ = self.st._json_loader(
+        template_numbers, *misc = self.st._json_loader(
             repo_home+'spectra/blanton2003_sed_templates.json', sort=False)
         self.template_numbers = [int(template_number)
                                  for template_number in template_numbers]
@@ -389,9 +389,9 @@ def createMockFile(spectral_density, constant_luminosity):
     lum_avg = 1e41
     lum_std = 5e40
 
-    band_names, wl_nb, r_nb, _ = stonp.Stacker._json_loader(
+    band_names, wl_nb, r_nb, *misc = stonp.Stacker._json_loader(
         repo_home+'filters/test_bands.json')
-    template_numbers, _, r_sed, _ = stonp.Stacker._json_loader(
+    template_numbers, _, r_sed, *misc = stonp.Stacker._json_loader(
         repo_home+'spectra/blanton2003_sed_templates.json', sort=False)
     template_numbers = [int(template_number)
                         for template_number in template_numbers]
