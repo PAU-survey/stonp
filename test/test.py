@@ -28,7 +28,7 @@ class TestJsonLoader(unittest.TestCase):
             stonp.Stacker._json_loader(False)
             stonp.Stacker._json_loader(1)
             stonp.Stacker._json_loader(1.23)
-            stonp.Stacker._json_loader([])
+            stonp.Stacker._json_loader(object())
 
     def test_bad_df_arg(self):
         with self.assertRaises(TypeError):
@@ -41,7 +41,7 @@ class TestJsonLoader(unittest.TestCase):
             stonp.Stacker._json_loader(
                 repo_home+'filters/test_bands.json', df=1.23)
             stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', df=[])
+                repo_home+'filters/test_bands.json', df=object())
 
     def test_bad_sort_arg(self):
         with self.assertRaises(TypeError):
@@ -52,7 +52,7 @@ class TestJsonLoader(unittest.TestCase):
             stonp.Stacker._json_loader(
                 repo_home+'filters/test_bands.json', sort=1.2)
             stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', sort=[])
+                repo_home+'filters/test_bands.json', sort=object())
 
     def test_returns_len(self):
         self.assertEqual(len(stonp.Stacker._json_loader(
@@ -77,7 +77,7 @@ class TestBinDictParser(unittest.TestCase):
             stonp.Stacker._bin_dict_parser(False)
             stonp.Stacker._bin_dict_parser(1)
             stonp.Stacker._bin_dict_parser(1.23)
-            stonp.Stacker._bin_dict_parser([])
+            stonp.Stacker._bin_dict_parser(object())
 
     def test_returns_type(self):
         self.assertIsInstance(stonp.Stacker._bin_dict_parser(
@@ -124,7 +124,6 @@ class TestGenerator(unittest.TestCase):
             createMockFile(spectral_density=True, constant_luminosity=True)
             createMockFile(spectral_density=1.23, constant_luminosity=True)
             createMockFile(spectral_density=object(), constant_luminosity=True)
-            createMockFile(spectral_density=[], constant_luminosity=True)
 
     def test_bad_second_arg(self):
         with self.assertRaises(TypeError):
@@ -136,8 +135,6 @@ class TestGenerator(unittest.TestCase):
                            constant_luminosity=1.23)
             createMockFile(spectral_density='wavelength',
                            constant_luminosity=object())
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity=[])
 
 
 class TestStonp(unittest.TestCase):
