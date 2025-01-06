@@ -101,6 +101,110 @@ class TestBinDictParser(unittest.TestCase):
         self.assertListEqual(bins['test2'][1], [5, 6])
 
 
+class TestLoadCatalog(unittest.TestCase):
+    mock_filename = None
+
+    @classmethod
+    def setUpClass(cls):
+        createMockFile(spectral_density='wavelength', constant_luminosity=True)
+        cls.mock_filename = 'mock_catalog_test_wavelength_density_constant_luminosity.csv'
+
+
+    def test_no_args(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog()
+
+    def test_file_not_exists(self):
+        with self.assertRaises(FileNotFoundError):
+            stonp.Stacker().load_catalog('not_existing.csv')
+
+    def test_bad_file_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(False)
+            stonp.Stacker().load_catalog(1)
+            stonp.Stacker().load_catalog(1.23)
+            stonp.Stacker().load_catalog(object())
+
+    def test_bad_max_nan_bands(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands='a')
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=object())
+        with self.assertRaises(ValueError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=-1)
+
+    def test_bad_z_label(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=1)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=object())
+        with self.assertRaises(ValueError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label='')
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label='bad_value')
+
+    def test_bad_fill_nans(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=1)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=object())
+        with self.assertRaises(ValueError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans='bad_value')
+
+    def test_bad_band_data(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=1)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=object())
+        with self.assertRaises(FileNotFoundError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data='test.json')
+        with self.assertRaises(KeyError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={})
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': None})
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': 'a'})
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': object()})
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': False})
+
+    def test_bad_bands_error_suffix(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=1)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=object())
+    
+    def test_bad_flux_units(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=1)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=object())
+        with self.assertRaises(ValueError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units='bad_value')
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=u.Unit("bar"))
+
+    def test_bad_wavelength_units(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=False)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=1)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=1.23)
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=object())
+        with self.assertRaises(ValueError):
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units='bad_value')
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=u.Unit("bar"))
+
+    def test_check_all_args(self):
+        try:
+            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=0, z_label='z',
+                                         fill_nans='zero', bands_data=repo_home + 'filters/test_bands.json',
+                                         bands_error_suffix='_error', flux_units=u.Unit('erg / (nm s cm2)'),
+                                         wavelength_units='nm')
+        except Exception as e:
+            assert False, f"Exception raised: {e}"
+
+
 class TestGenerator(unittest.TestCase):
     def test_no_args(self):
         with self.assertRaises(TypeError):

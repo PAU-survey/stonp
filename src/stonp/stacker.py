@@ -22,6 +22,7 @@ import os
 import sys
 import json
 import warnings
+from enum import Enum
 
 import numpy as np
 import pandas as pd
@@ -33,6 +34,9 @@ from astropy.cosmology import Planck18 as cosmo
 from astropy import constants as const
 from scipy import interpolate
 
+class Fill_nans(Enum):
+	INTERPOLATED = 'interpolated'
+	ZERO = 'zero'
 
 class Stacker():
     '''
@@ -104,8 +108,8 @@ class Stacker():
         # functions
         if not isinstance(bands_data_dir, str):
             raise TypeError('bands_data_dir must be a string')
-        if not isinstance(df, pd.DataFrame) and df is not None:
-            raise TypeError('df must be a pandas DataFrame')
+        if not isinstance(df, (pd.DataFrame, type(None))):
+            raise TypeError('df must be a pandas DataFrame or None')
         if not isinstance(sort, bool):
             raise TypeError('sort must be a boolean')
         with open(bands_data_dir, 'r') as read_file:
@@ -169,9 +173,9 @@ class Stacker():
         nb_labels = list(band_mean_wls.keys())
         wl_nb = np.array(list(band_mean_wls.values()))
 
-        #maybe we could include something to crop unnecessary wavelengths 
+        # Maybe we could include something to crop unnecessary wavelengths
         # in wl_grid_obs and save memory when computing smoothing band
-        return nb_labels, wl_nb, r_nb, wl_grid_obs 
+        return nb_labels, wl_nb, r_nb, wl_grid_obs
 
 
     @staticmethod
@@ -425,7 +429,7 @@ class Stacker():
         ----------
         catalog : pandas DataFrame or str
             If DataFrame instance, the catalog itself, already loaded.
-            If str, directory of the catalog to be loaded.
+            If str, name of the catalog to be loaded.
             Catalogs can be in plain text (.csv) or .parquet
         max_nan_bands : int, optional
             Maximum number of NaN band fluxes that can be tolerated. Objects
@@ -442,7 +446,7 @@ class Stacker():
         bands_data: dict or str, optional
             If dict, dictionary with photometric band wavelength data. 
             Keys must be the column labels, values their average wavelengths. 
-            If str, directory of the .json file that contains all band response
+            If str, name of the .json file that contains all band response
             functions. The .json must contain a dictionary where the keys are
             the column labels of the catalog, and the values are the response
             functions. These must be specified as dictionaries with 
@@ -469,6 +473,28 @@ class Stacker():
         None.
 
         '''
+        if not isinstance(catalog, (pd.DataFrame, str)):
+            raise TypeError('catalog must be a pandas DataFrame or a string')
+        # bool is a subclass of int, so its rejection must be explicitly stated
+        if not isinstance(max_nan_bands, int) or isinstance(max_nan_bands, bool):
+            raise TypeError('max_nan_bands must be an integer')
+        if max_nan_bands < 0:
+            raise ValueError('max_nan_bands must be a non-negative integer')
+        if not isinstance(z_label, str):
+            raise TypeError('z_label must be a string')
+        if len(z_label) == 0:
+            raise ValueError('z_label must have at least one character')
+        if not isinstance(fill_nans, str):
+            raise TypeError('fill_nans must be a string')
+        Fill_nans(fill_nans)
+        if not isinstance(bands_data, (dict, str, type(None))):
+            raise TypeError('bands_data must be a dictionary, a string, or None')
+        if not isinstance(bands_error_suffix, str):
+            raise TypeError('bands_error_suffix must be a string')
+        if not isinstance(flux_units, (type(u.Unit()), str)):
+            raise TypeError('flux_units must be a string or an astropy unit object')
+        if not isinstance(wavelength_units, (type(u.Unit()), str)):
+            raise TypeError('wavelength_units must be a string or an astropy unit object')
 
         self.max_nan_bands = max_nan_bands
         self.z_label = z_label
@@ -535,7 +561,7 @@ class Stacker():
             self.wl_nb = np.array(list(bands_data.values()))
             self.have_band_responses = False
 
-        elif isinstance(bands_data, str):
+        else: # bands_data is a string pointing to a .json file
             nb_labels, wl_nb, r_nb, wl_grid_obs = self._json_loader(bands_data, df=df)
 
             self.nb_labels = nb_labels
@@ -543,10 +569,6 @@ class Stacker():
             self.r_nb = r_nb
             self.wl_grid_obs = wl_grid_obs
             self.have_band_responses = True
-
-        else:
-            raise ValueError(
-                "'bands_data' must be a string (directory of .json file) or dict")
 
         self.nb_err_labels = [
             label + bands_error_suffix for label in self.nb_labels]
