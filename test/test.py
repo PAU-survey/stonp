@@ -289,6 +289,47 @@ class TestGenerator(unittest.TestCase):
             createMockFile(spectral_density='wavelength',
                            constant_luminosity=object())
 
+    def test_good_args(self):
+        try:
+            createMockFile(spectral_density='wavelength',
+                           constant_luminosity=True)
+            self.assertTrue(os.path.exists(
+                'mock_catalog_test_wavelength_density_constant_luminosity.csv'))
+            os.remove(
+                'mock_catalog_test_wavelength_density_constant_luminosity.csv')
+        except Exception as e:
+            assert False, f"Exception raised: {e}"
+
+        try:
+            createMockFile(spectral_density='wavelength',
+                           constant_luminosity=False)
+            self.assertTrue(os.path.exists(
+                'mock_catalog_test_wavelength_density_evolving_luminosity.csv'))
+            os.remove(
+                'mock_catalog_test_wavelength_density_evolving_luminosity.csv')
+        except Exception as e:
+            assert False, f"Exception raised: {e}"
+
+        try:
+            createMockFile(spectral_density='frequency',
+                           constant_luminosity=True)
+            self.assertTrue(os.path.exists(
+                'mock_catalog_test_frequency_density_constant_luminosity.csv'))
+            os.remove(
+                'mock_catalog_test_frequency_density_constant_luminosity.csv')
+        except Exception as e:
+            assert False, f"Exception raised: {e}"
+
+        try:
+            createMockFile(spectral_density='frequency',
+                           constant_luminosity=False)
+            self.assertTrue(os.path.exists(
+                'mock_catalog_test_frequency_density_evolving_luminosity.csv'))
+            os.remove(
+                'mock_catalog_test_frequency_density_evolving_luminosity.csv')
+        except Exception as e:
+            assert False, f"Exception raised: {e}"
+
 
 class TestStonp(unittest.TestCase):
     st = None
