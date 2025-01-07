@@ -254,6 +254,41 @@ class TestLinterp(unittest.TestCase):
             stonp.Stacker()._linterp([12], [1], [1, 2], [])
 
 
+class TestDetermineColsRows(unittest.TestCase):
+    def test_wrong_arg_number(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._determine_cols_rows()
+            stonp.Stacker()._determine_cols_rows(1)
+            stonp.Stacker()._determine_cols_rows(1, 2, 3)
+
+    def test_bad_first_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._determine_cols_rows(None, 1.23)
+            stonp.Stacker()._determine_cols_rows(True, 1.23)
+            stonp.Stacker()._determine_cols_rows('a', 1.23)
+            stonp.Stacker()._determine_cols_rows(object(), 1.23)
+
+    def test_bad_second_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._determine_cols_rows(1, None)
+            stonp.Stacker()._determine_cols_rows(1, True)
+            stonp.Stacker()._determine_cols_rows(1, 'a')
+            stonp.Stacker()._determine_cols_rows(1, object())
+
+    def test_return_type(self):
+        self.assertIsInstance(
+            stonp.Stacker()._determine_cols_rows(1, 1), tuple)
+        a, b = stonp.Stacker()._determine_cols_rows(1, 1)
+        self.assertIsInstance(a, int)
+        self.assertIsInstance(b, int)
+
+    def test_return_size(self):
+        self.assertEqual(len(stonp.Stacker()._determine_cols_rows(1, 1)), 2)
+
+    def test_return_values(self):
+        self.assertEqual(stonp.Stacker()._determine_cols_rows(4, 1), (2, 2))
+
+
 class TestGenerator(unittest.TestCase):
     def test_no_args(self):
         with self.assertRaises(TypeError):
