@@ -205,6 +205,55 @@ class TestLoadCatalog(unittest.TestCase):
             assert False, f"Exception raised: {e}"
 
 
+class TestLinterp(unittest.TestCase):
+    def test_wrong_test_number(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._linterp()
+            stonp.Stacker()._linterp(1)
+            stonp.Stacker()._linterp(1, 2)
+            stonp.Stacker()._linterp(1, 2, 3)
+            stonp.Stacker()._linterp(1, 2, 3, 4, 5)
+
+    def test_bad_first_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._linterp(False, [], [], [])
+            stonp.Stacker()._linterp(1, [], [], [])
+            stonp.Stacker()._linterp(1.23, [], [], [])
+            stonp.Stacker()._linterp('a', [], [], [])
+            stonp.Stacker()._linterp(object(), [], [], [])
+
+    def test_bad_second_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._linterp([], False, [], [])
+            stonp.Stacker()._linterp([], 1, [], [])
+            stonp.Stacker()._linterp([], 1.23, [], [])
+            stonp.Stacker()._linterp([], 'a', [], [])
+            stonp.Stacker()._linterp([], object(), [], [])
+
+    def test_bad_third_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._linterp([], [], False, [])
+            stonp.Stacker()._linterp([], [], 1, [])
+            stonp.Stacker()._linterp([], [], 1.23, [])
+            stonp.Stacker()._linterp([], [], 'a', [])
+            stonp.Stacker()._linterp([], [], object(), [])
+
+    def test_bad_fourth_arg(self):
+        with self.assertRaises(TypeError):
+            stonp.Stacker()._linterp([], [], [], False)
+            stonp.Stacker()._linterp([], [], [], 1)
+            stonp.Stacker()._linterp([], [], [], 1.23)
+            stonp.Stacker()._linterp([], [], [], 'a')
+            stonp.Stacker()._linterp([], [], [], object())
+
+    def test_bad_arg_sizes(self):
+        with self.assertRaises(ValueError):
+            stonp.Stacker()._linterp([12], [], [1], [1])
+            stonp.Stacker()._linterp([12], [1], [], [1])
+            stonp.Stacker()._linterp([12], [1], [1], [])
+            stonp.Stacker()._linterp([12], [1], [1, 2], [])
+
+
 class TestGenerator(unittest.TestCase):
     def test_no_args(self):
         with self.assertRaises(TypeError):

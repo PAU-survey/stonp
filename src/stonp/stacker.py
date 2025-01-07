@@ -76,8 +76,18 @@ class Stacker():
             The interpolated values, same shape as `x`.
         y_err : array_like
             The error of the interpolated values, same shape as `x`.
-
         """
+
+        if not isinstance(x, (np.ndarray, list)):
+            raise TypeError('x must be a numpy array or a list')
+        if not isinstance(xp, (np.ndarray, list)):
+            raise TypeError('xp must be a numpy array or a list')
+        if not isinstance(yp, (np.ndarray, list)):
+            raise TypeError('yp must be a numpy array or a list')
+        if not isinstance(yp_err, (np.ndarray, list)):
+            raise TypeError('yp_err must be a numpy array or a list')
+        if not len(xp) == len(yp) == len(yp_err):
+            raise ValueError('xp, yp, and yp_err must have the same length')
 
         y = np.interp(x, xp, yp, left=np.nan, right=np.nan)
         # Determining for each point to interpolate the indices of the data points
