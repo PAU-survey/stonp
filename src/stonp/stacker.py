@@ -99,98 +99,126 @@ class Stacker():
 
 
     @staticmethod
-    def _json_loader(bands_data_dir, df=None, sort=True):
-        # Loads the .json of band response functions specified
-        # Returns band labels, average wavelengths, and interpolated response
-        # functions
-        # If wavelength units are not specified in the .json, they will be assumed
-        # to be nanometers
-        # If flux units are not specified in the .json, they will be assumed to
-        # be dimensionless
-        # Flux units only need to be specified for the first SED units it finds;
-        # stonp will assume all the subsequent SEDs have the same flux units
-        with open(bands_data_dir, 'r') as read_file:
-            band_responses_raw = json.load(read_file)
-
-        band_responses = {}
-        for key, value in band_responses_raw.items():
-            # Removing bands that are not in the catalog, if provided
-            if df is not None:
-                if key in df.columns:
-                    band_responses[key] = value
-
-            # Otherwise we'll add all bands
-            else:
-                band_responses[key] = value
+    def _json_loader(json_dir):
+        # Loads the .json on the specified dir. The .json must contain a dict,
+        # each item must have as value another dict, with:
+        # - 'wavelength': Array of wavelength points
+        # - 'response' or 'flux': Array of band response function/SED flux
+        # - 'wav_units': Wavelength units
+        # - 'flux_units': (optional, only if SED): Flux units
+        # Will return keys of the dict, interpolation object, common wavelength
+        # grid and flux units (if specified). 
+        # If different items have different flux units, will convert
+        # to the flux units of the same item
+        
+        with open(json_dir, 'r') as read_file:
+            data_dict = json.load(read_file)
         
         flux_units = None
-        for key, value in band_responses.items():
-            band_responses[key]['wavelength'] = np.array(value['wavelength'])
-            band_responses[key]['response'] = np.array(value['response'])
+        names = []
+        for key, value in data_dict.items():
+            data_dict[key]['wavelength'] = np.array(value['wavelength'])
+            try:
+                data_dict[key]['response'] = np.array(value['response'])
+                
+            except KeyError:
+                data_dict[key]['flux'] = np.array(value['flux'])
+                if not flux_units: 
+                    flux_units = value['flux_units']
+                    
+                else:
+                    flux_units_tmp = u.Unit(value['flux_units'])
+                    data_dict[key]['flux'] *= flux_units_tmp
             
-            # Converting wavelength to nms, if they're different
-            try: 
-                wav_units = u.Unit(value['wav_units'])
-                band_responses[key]['wavelength'] *= wav_units.to('nm')
+            try:
+                wav_units_tmp = u.Unit(value['wav_units'])
+                data_dict[key]['wavelength'] *= wav_units_tmp.to('nm')
                 
             except KeyError:
                 pass
-                
-            # Checking flux units if we've haven't found any yet
-            if not flux_units:
-                try:
-                    flux_units = value['flux_units']
-                except KeyError:
-                    pass
-                    
-        # Computing mean wavelengths and sorting in ascending wavelength order
-        # if specified
-        band_mean_wls = {}
-        for key, value in band_responses.items():
-            wl = np.array(value['wavelength'])
-            r = np.array(value['response'])
-            band_mean_wls[key] = np.trapz(wl * r, wl) / np.trapz(r, wl)
+
+            names.append(key)                
         
-
-        if sort:
-            inds = np.argsort(list(band_mean_wls.values()))
-
-            band_mean_wls = {list(band_mean_wls.keys())[i]: list(band_mean_wls.values())[i]
-                             for i in inds}
-
-            band_responses = {list(band_responses.keys())[i]: list(band_responses.values())[i]
-                              for i in inds}
-
         # Generating interpolation object
         # returns all interpolated normalized bands for a given wavelength grid, at once
         # Computing the highest resolution common wavelength grid for all band responses
-        wl_bands = [value['wavelength'] for value in band_responses.values()]
-        wl_bands_min = np.min([wl_band[0] for wl_band in wl_bands])
-        wl_bands_max = np.max([wl_band[-1] for wl_band in wl_bands])
-        wl_bands_step = np.min(
-            [np.min(wl_band[1:] - wl_band[:-1]) for wl_band in wl_bands])
-        wl_grid_obs = np.arange(wl_bands_min / wl_bands_step,
-                                  wl_bands_max / wl_bands_step + 1) * wl_bands_step
+        wl_arrays = [value['wavelength'] for value in data_dict.values()]
+        wl_arrays_min = np.min([wl_array[0] for wl_array in wl_arrays])
+        wl_arrays_max = np.max([wl_array[-1] for wl_array in wl_arrays])
+        wl_arrays_step = np.min(
+            [np.min(wl_array[1:] - wl_array[:-1]) for wl_array in wl_arrays])
+        wl_grid_data = np.arange(wl_arrays_min / wl_arrays_step,
+                                  wl_arrays_max / wl_arrays_step + 1) * wl_arrays_step
 
-        # Interpolating to a single array the band responses, and renormalizing just in case
-        r_nb = np.zeros([len(band_responses), wl_grid_obs.shape[0]])
+        # Interpolating to a single array the band responses
+        data_interpolated = np.zeros([len(data_dict), wl_grid_data.shape[0]])
         i = 0
-        for value in band_responses.values():
-            r_nb[i, :] = np.interp(wl_grid_obs, value['wavelength'], value['response'],
+        for value in data_dict.values():
+            try:
+                y_values = value['response']
+            
+            except KeyError:
+                y_values = value['flux']
+                
+            data_interpolated[i, :] = np.interp(wl_grid_data, value['wavelength'], y_values,
                                    left=0, right=0)
-            r_nb[i, :] /= np.trapz(r_nb[i, :], wl_grid_obs)
             i += 1
 
         # Computing the interpolation object
-        r_nb = interpolate.interp1d(
-            wl_grid_obs, r_nb, bounds_error=False, fill_value=0)
-
-        nb_labels = list(band_mean_wls.keys())
-        wl_nb = np.array(list(band_mean_wls.values()))
+        interpolations = interpolate.interp1d(
+            wl_grid_data, data_interpolated, bounds_error=False, fill_value=0)
 
         #maybe we could include something to crop unnecessary wavelengths 
         # in wl_grid_obs and save memory when computing smoothing band
-        return nb_labels, wl_nb, r_nb, wl_grid_obs, flux_units
+        return names, interpolations, wl_grid_data, flux_units
+    
+    
+    def _band_loader(self, data_dir, df=None):
+        # Wrapper for _json_loader() that assumes it's loaded band response functions, and
+        # 0) If dataframe provided, keeps only bands in dataframe
+        # 1) Computes mean wavelength
+        # 2) Sorts by ascending wavelength
+        # 3) Normalizes
+        
+        nb_labels_loaded, interpolations_loaded, wl_grid_obs, _ = self._json_loader(data_dir)
+                    
+        # De-interpolating
+        band_responses = interpolations_loaded(wl_grid_obs)
+        
+        # Keeping only bands in dataframe
+        if df is not None:
+            nb_labels = []
+            select_nbs = np.zeros(len(nb_labels_loaded)).astype(bool)
+            for i, nb_label in enumerate(nb_labels_loaded):
+                if nb_label in df.columns:
+                    nb_labels.append(nb_label)
+                    select_nbs[i] = True
+                    
+            band_responses = band_responses[select_nbs, :]
+            
+        else:
+            nb_labels = nb_labels_loaded
+                    
+        # Computing mean wavelengths and sorting in ascending wavelength order
+        band_mean_wls = {}
+        for i, nb_label in enumerate(nb_labels):
+            band_mean_wls[nb_label] = (np.trapz(wl_grid_obs**2 * band_responses[i,:], wl_grid_obs) 
+                                  / np.trapz(wl_grid_obs * band_responses[i,:], wl_grid_obs))
+        
+        # Sorting by ascending wavelength
+        inds = np.argsort(list(band_mean_wls.values()))
+        band_mean_wls = {list(band_mean_wls.keys())[i]: list(band_mean_wls.values())[i]
+                         for i in inds}
+        band_responses = band_responses[inds, :]
+
+        #  Reormalizing and generating interpolation object again
+        band_responses /= np.trapz(wl_grid_obs * band_responses, wl_grid_obs, axis=1)[:, None]
+        r_nb = interpolate.interp1d(wl_grid_obs, band_responses, bounds_error=False, fill_value=0)
+        
+        wl_nb = np.array(list(band_mean_wls.values()))
+        #maybe we could include something to crop unnecessary wavelengths 
+        # in wl_grid_obs and save memory when computing smoothing band
+        return nb_labels, wl_nb, r_nb, wl_grid_obs
 
 
     @staticmethod
@@ -550,7 +578,7 @@ class Stacker():
             self.have_band_responses = False
 
         elif isinstance(bands_data, str):
-            nb_labels, wl_nb, r_nb, wl_grid_obs, _ = self._json_loader(bands_data, df=df)
+            nb_labels, wl_nb, r_nb, wl_grid_obs = self._band_loader(bands_data, df=df)
 
             self.nb_labels = nb_labels
             self.wl_nb = wl_nb
@@ -1461,7 +1489,7 @@ class Stacker():
             raise Exception("No smoothing band found. Please compute or load"
                             "a stack with use_band_responses=True when running to_rest_frame()")
             
-        sed_labels, _, sed_interp, wl_grid_sed, flux_units = self._json_loader(sed_dir, df=None)
+        sed_labels, sed_interp, wl_grid_sed, flux_units = self._json_loader(sed_dir, df=None)
         smoothing_bands = self.smoothing_bands
         seds = sed_interp(smoothing_bands.rf_wl_smooth.data)
 
