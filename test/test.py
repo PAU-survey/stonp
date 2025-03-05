@@ -109,6 +109,10 @@ class TestLoadCatalog(unittest.TestCase):
         createMockFile(spectral_density='wavelength', constant_luminosity=True)
         cls.mock_filename = 'mock_catalog_test_wavelength_density_constant_luminosity.csv'
 
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(cls.mock_filename)
+        cls.mock_filename = None
 
     def test_no_args(self):
         with self.assertRaises(TypeError):
