@@ -55,7 +55,7 @@ class Stacker():
 
         try:
             alias_ = self.alias_dict[label]
-        except:
+        except KeyError:
             alias_ = label
 
         return alias_
@@ -466,9 +466,9 @@ class Stacker():
 
         try:
             self.df
-        except AttributeError:
-            raise Exception(
-                "No catalog loaded. Please run load_catalog() first.")
+        except AttributeError as exc:
+            raise ValueError(
+                "No catalog loaded. Please run load_catalog() first.") from exc
 
         plt.figure(dpi=160, figsize=[6.4, 6.4 / 1.62])
         counts, bin_edg = plt.hist(self.df[label], bins=bins)[:-1]
@@ -559,9 +559,9 @@ class Stacker():
 
         try:
             self.df
-        except AttributeError:
-            raise Exception(
-                "No catalog loaded. Please run load_catalog() first.")
+        except AttributeError as exc:
+            raise ValueError(
+                "No catalog loaded. Please run load_catalog() first.") from exc
 
         flux_conversion = flux_conversion.lower()
         if flux_conversion not in ['normalized', 'redshift_normalized', 'luminosity', 'nothing']:
@@ -919,9 +919,9 @@ class Stacker():
         # Passing the input and checking that everything has been computed
         try:
             self.rf_seds
-        except AttributeError:
+        except AttributeError as exc:
             raise Exception(
-                'SEDs not shifted to rest frame. Please run to_rest_frame() first')
+                'SEDs not shifted to rest frame. Please run to_rest_frame() first') from exc
 
         weights = ['inv_variance', 'snr_square']
         if weight and weight not in weights:
@@ -937,10 +937,10 @@ class Stacker():
         if weight or str(error_type).lower() == 'flux_error':
             try:
                 self.rf_seds_err
-            except AttributeError:
+            except AttributeError as exc:
                 raise Exception("Error not computed when shifting to rest frame. "
                                 "Please run to_rest_frame() with compute_error=True or "
-                                "change the parameter 'weight' to None")
+                                "change the parameter 'weight' to None") from exc
 
             use_errors = True
 
@@ -1201,13 +1201,13 @@ class Stacker():
 
         try:
             self.stacked_seds
-        except AttributeError:
+        except AttributeError as exc:
             raise Exception("No stacked SEDs available. Please stack a loaded"
                             " catalog with stack() or load an xarray"
-                            " of stacked SEDs with load_stack()")
+                            " of stacked SEDs with load_stack()") from exc
 
         if not self.stack_saved:
-            raise Exception(
+            raise ValueError(
                 "The stack has not been saved. Please run save_stack() before plotting")
 
         if spectral_lines:
