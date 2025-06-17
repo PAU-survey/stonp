@@ -2,11 +2,9 @@ import unittest
 import sys
 import os
 import numpy as np
-import scipy.interpolate
-import pandas as pd
 import astropy.units as u
-from astropy import constants as const
-from astropy.cosmology import Planck18 as cosmo
+
+from helpers import create_mockfile, calculate_md5, skip_if_frequency_deactivated, skip_if_wavelength_deactivated, skip_if_slow_deactivated
 
 sys.path.append('../src/stonp/')
 import stonp
@@ -14,358 +12,145 @@ cwd = os.getcwd() + '/'
 repo_home = cwd + '../'
 
 
-class TestJsonLoader(unittest.TestCase):
-    def test_no_args(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker._json_loader()
-
-    def test_file_not_found(self):
-        with self.assertRaises(FileNotFoundError):
-            stonp.Stacker._json_loader('test.json')
-
-    def test_bad_file_argument(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker._json_loader(False)
-            stonp.Stacker._json_loader(1)
-            stonp.Stacker._json_loader(1.23)
-            stonp.Stacker._json_loader(object())
-
-    def test_bad_df_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', df=True)
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', df='a')
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', df=7)
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', df=1.23)
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', df=object())
-
-    def test_bad_sort_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', sort='a')
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', sort=1)
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', sort=1.2)
-            stonp.Stacker._json_loader(
-                repo_home+'filters/test_bands.json', sort=object())
-
-    def test_returns_len(self):
-        self.assertEqual(len(stonp.Stacker._json_loader(
-            repo_home+'filters/test_bands.json')), 4)
-
-    def test_returns_type(self):
-        nb_labels, wl_nb, r_nb, wl_grid_obs = stonp.Stacker._json_loader(
-            repo_home+'filters/test_bands.json')
-        self.assertIsInstance(nb_labels, list)
-        self.assertIsInstance(wl_nb, np.ndarray)
-        self.assertIsInstance(r_nb, scipy.interpolate.interp1d)
-        self.assertIsInstance(wl_grid_obs, np.ndarray)
-
-
-class TestBinDictParser(unittest.TestCase):
-    def test_no_args(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker._bin_dict_parser()
-
-    def test_bad_dict_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker._bin_dict_parser(False)
-            stonp.Stacker._bin_dict_parser(1)
-            stonp.Stacker._bin_dict_parser(1.23)
-            stonp.Stacker._bin_dict_parser(object())
-
-    def test_returns_type(self):
-        self.assertIsInstance(stonp.Stacker._bin_dict_parser(
-            {'test': [1, 2, 3]}), dict)
-
-    def test_dic_struct(self):
-        bins = stonp.Stacker._bin_dict_parser(
-            {'test1': [1, 2, 3], 'test2': [4, 5, 6]})
-        self.assertEqual(len(bins), 2)
-        for key in bins:
-            for val in bins[key]:
-                self.assertIsInstance(val, list)
-                self.assertEqual(len(val), 2)
-
-    def test_dict_values(self):
-        bins = stonp.Stacker._bin_dict_parser(
-            {'test1': [1, 2, 3], 'test2': [4, 5, 6]})
-        self.assertListEqual(bins['test1'][0], [1, 2])
-        self.assertListEqual(bins['test1'][1], [2, 3])
-        self.assertListEqual(bins['test2'][0], [4, 5])
-        self.assertListEqual(bins['test2'][1], [5, 6])
-
-
 class TestLoadCatalog(unittest.TestCase):
     mock_filename = None
 
     @classmethod
     def setUpClass(cls):
-        createMockFile(spectral_density='wavelength', constant_luminosity=True)
+        print("\n"+str(cls.__name__))
+        cls.run_slow_tests = os.getenv("SKIP_SLOW_TESTS") != "1"
+        if cls.run_slow_tests:
+            create_mockfile(spectral_density='wavelength',
+                            constant_luminosity=True)
         cls.mock_filename = 'mock_catalog_test_wavelength_density_constant_luminosity.csv'
 
     @classmethod
     def tearDownClass(cls):
-        os.remove(cls.mock_filename)
-        cls.mock_filename = None
+        if cls.run_slow_tests:
+            os.remove(cls.mock_filename)
+            cls.mock_filename = None
+
+    def setUp(self):
+        self.st = stonp.Stacker()
+
+    def tearDown(self):
+        self.st = None
 
     def test_no_args(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog()
+            self.st.load_catalog()
 
     def test_file_not_exists(self):
         with self.assertRaises(FileNotFoundError):
-            stonp.Stacker().load_catalog('not_existing.csv')
+            self.st.load_catalog('not_existing.csv')
 
     def test_bad_file_arg(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(False)
-            stonp.Stacker().load_catalog(1)
-            stonp.Stacker().load_catalog(1.23)
-            stonp.Stacker().load_catalog(object())
+            self.st.load_catalog(False)
+            self.st.load_catalog(1)
+            self.st.load_catalog(1.23)
+            self.st.load_catalog(object())
 
     def test_bad_max_nan_bands(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands='a')
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=object())
+            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=False)
+            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands='a')
+            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=1.23)
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 max_nan_bands=object())
         with self.assertRaises(ValueError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=-1)
+            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=-1)
 
     def test_bad_z_label(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=1)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label=object())
+            self.st.load_catalog(cwd + self.mock_filename, z_label=False)
+            self.st.load_catalog(cwd + self.mock_filename, z_label=1)
+            self.st.load_catalog(cwd + self.mock_filename, z_label=1.23)
+            self.st.load_catalog(cwd + self.mock_filename, z_label=object())
         with self.assertRaises(ValueError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label='')
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, z_label='bad_value')
+            self.st.load_catalog(cwd + self.mock_filename, z_label='')
+            self.st.load_catalog(cwd + self.mock_filename, z_label='bad_value')
 
     def test_bad_fill_nans(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=1)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans=object())
+            self.st.load_catalog(cwd + self.mock_filename, fill_nans=False)
+            self.st.load_catalog(cwd + self.mock_filename, fill_nans=1)
+            self.st.load_catalog(cwd + self.mock_filename, fill_nans=1.23)
+            self.st.load_catalog(cwd + self.mock_filename, fill_nans=object())
         with self.assertRaises(ValueError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, fill_nans='bad_value')
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 fill_nans='bad_value')
 
     def test_bad_band_data(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=1)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data=object())
+            self.st.load_catalog(cwd + self.mock_filename, bands_data=False)
+            self.st.load_catalog(cwd + self.mock_filename, bands_data=1)
+            self.st.load_catalog(cwd + self.mock_filename, bands_data=1.23)
+            self.st.load_catalog(cwd + self.mock_filename, bands_data=object())
         with self.assertRaises(FileNotFoundError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data='test.json')
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_data='test.json')
+        with self.assertRaises(ValueError):
+            self.st.load_catalog(cwd + self.mock_filename, bands_data={})
+            self.st.load_catalog(cwd + self.mock_filename, bands_data="")
+
+    @skip_if_slow_deactivated()
+    def test_bad_band_keys(self):
         with self.assertRaises(KeyError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={})
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': None})
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': 'a'})
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': object()})
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_data={'NB455': False})
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_data={'NB455': None})
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_data={'NB455': 'a'})
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_data={'NB455': object()})
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_data={'NB455': False})
 
     def test_bad_bands_error_suffix(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=1)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, bands_error_suffix=object())
-    
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_error_suffix=False)
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_error_suffix=1)
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_error_suffix=1.23)
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 bands_error_suffix=object())
+
     def test_bad_flux_units(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=1)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=object())
+            self.st.load_catalog(cwd + self.mock_filename, flux_units=False)
+            self.st.load_catalog(cwd + self.mock_filename, flux_units=1)
+            self.st.load_catalog(cwd + self.mock_filename, flux_units=1.23)
+            self.st.load_catalog(cwd + self.mock_filename, flux_units=object())
         with self.assertRaises(ValueError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units='bad_value')
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, flux_units=u.Unit("bar"))
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 flux_units='bad_value')
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 flux_units=u.Unit("bar"))
 
     def test_bad_wavelength_units(self):
         with self.assertRaises(TypeError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=False)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=1)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=1.23)
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=object())
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 wavelength_units=False)
+            self.st.load_catalog(cwd + self.mock_filename, wavelength_units=1)
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 wavelength_units=1.23)
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 wavelength_units=object())
         with self.assertRaises(ValueError):
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units='bad_value')
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, wavelength_units=u.Unit("bar"))
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 wavelength_units='bad_value')
+            self.st.load_catalog(cwd + self.mock_filename,
+                                 wavelength_units=u.Unit("bar"))
 
-    def test_check_all_args(self):
+    @skip_if_slow_deactivated()
+    def test_check_all_correct_args(self):
         try:
-            stonp.Stacker().load_catalog(cwd + self.mock_filename, max_nan_bands=0, z_label='z',
-                                         fill_nans='zero', bands_data=repo_home + 'filters/test_bands.json',
-                                         bands_error_suffix='_error', flux_units=u.Unit('erg / (nm s cm2)'),
-                                         wavelength_units='nm')
-        except Exception as e:
-            assert False, f"Exception raised: {e}"
-
-
-class TestLinterp(unittest.TestCase):
-    def test_wrong_test_number(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._linterp()
-            stonp.Stacker()._linterp(1)
-            stonp.Stacker()._linterp(1, 2)
-            stonp.Stacker()._linterp(1, 2, 3)
-            stonp.Stacker()._linterp(1, 2, 3, 4, 5)
-
-    def test_bad_first_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._linterp(False, [], [], [])
-            stonp.Stacker()._linterp(1, [], [], [])
-            stonp.Stacker()._linterp(1.23, [], [], [])
-            stonp.Stacker()._linterp('a', [], [], [])
-            stonp.Stacker()._linterp(object(), [], [], [])
-
-    def test_bad_second_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._linterp([], False, [], [])
-            stonp.Stacker()._linterp([], 1, [], [])
-            stonp.Stacker()._linterp([], 1.23, [], [])
-            stonp.Stacker()._linterp([], 'a', [], [])
-            stonp.Stacker()._linterp([], object(), [], [])
-
-    def test_bad_third_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._linterp([], [], False, [])
-            stonp.Stacker()._linterp([], [], 1, [])
-            stonp.Stacker()._linterp([], [], 1.23, [])
-            stonp.Stacker()._linterp([], [], 'a', [])
-            stonp.Stacker()._linterp([], [], object(), [])
-
-    def test_bad_fourth_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._linterp([], [], [], False)
-            stonp.Stacker()._linterp([], [], [], 1)
-            stonp.Stacker()._linterp([], [], [], 1.23)
-            stonp.Stacker()._linterp([], [], [], 'a')
-            stonp.Stacker()._linterp([], [], [], object())
-
-    def test_bad_arg_sizes(self):
-        with self.assertRaises(ValueError):
-            stonp.Stacker()._linterp([12], [], [1], [1])
-            stonp.Stacker()._linterp([12], [1], [], [1])
-            stonp.Stacker()._linterp([12], [1], [1], [])
-            stonp.Stacker()._linterp([12], [1], [1, 2], [])
-
-
-class TestDetermineColsRows(unittest.TestCase):
-    def test_wrong_arg_number(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._determine_cols_rows()
-            stonp.Stacker()._determine_cols_rows(1)
-            stonp.Stacker()._determine_cols_rows(1, 2, 3)
-
-    def test_bad_first_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._determine_cols_rows(None, 1.23)
-            stonp.Stacker()._determine_cols_rows(True, 1.23)
-            stonp.Stacker()._determine_cols_rows('a', 1.23)
-            stonp.Stacker()._determine_cols_rows(object(), 1.23)
-
-    def test_bad_second_arg(self):
-        with self.assertRaises(TypeError):
-            stonp.Stacker()._determine_cols_rows(1, None)
-            stonp.Stacker()._determine_cols_rows(1, True)
-            stonp.Stacker()._determine_cols_rows(1, 'a')
-            stonp.Stacker()._determine_cols_rows(1, object())
-
-    def test_return_type(self):
-        self.assertIsInstance(
-            stonp.Stacker()._determine_cols_rows(1, 1), tuple)
-        a, b = stonp.Stacker()._determine_cols_rows(1, 1)
-        self.assertIsInstance(a, int)
-        self.assertIsInstance(b, int)
-
-    def test_return_size(self):
-        self.assertEqual(len(stonp.Stacker()._determine_cols_rows(1, 1)), 2)
-
-    def test_return_values(self):
-        self.assertEqual(stonp.Stacker()._determine_cols_rows(4, 1), (2, 2))
-
-
-class TestGenerator(unittest.TestCase):
-    def test_no_args(self):
-        with self.assertRaises(TypeError):
-            createMockFile()
-
-    def test_only_first_arg(self):
-        with self.assertRaises(TypeError):
-            createMockFile(spectral_density='wavelength')
-
-    def test_only_second_arg(self):
-        with self.assertRaises(TypeError):
-            createMockFile(constant_luminosity=True)
-
-    def test_bad_first_arg(self):
-        with self.assertRaises(ValueError):
-            createMockFile(spectral_density='bad_value',
-                           constant_luminosity=True)
-
-        with self.assertRaises(TypeError):
-            createMockFile(spectral_density=1, constant_luminosity=True)
-            createMockFile(spectral_density=True, constant_luminosity=True)
-            createMockFile(spectral_density=1.23, constant_luminosity=True)
-            createMockFile(spectral_density=object(), constant_luminosity=True)
-
-    def test_bad_second_arg(self):
-        with self.assertRaises(TypeError):
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity='a')
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity=1)
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity=1.23)
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity=object())
-
-    def test_good_args(self):
-        try:
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity=True)
-            self.assertTrue(os.path.exists(
-                'mock_catalog_test_wavelength_density_constant_luminosity.csv'))
-            os.remove(
-                'mock_catalog_test_wavelength_density_constant_luminosity.csv')
-        except Exception as e:
-            assert False, f"Exception raised: {e}"
-
-        try:
-            createMockFile(spectral_density='wavelength',
-                           constant_luminosity=False)
-            self.assertTrue(os.path.exists(
-                'mock_catalog_test_wavelength_density_evolving_luminosity.csv'))
-            os.remove(
-                'mock_catalog_test_wavelength_density_evolving_luminosity.csv')
-        except Exception as e:
-            assert False, f"Exception raised: {e}"
-
-        try:
-            createMockFile(spectral_density='frequency',
-                           constant_luminosity=True)
-            self.assertTrue(os.path.exists(
-                'mock_catalog_test_frequency_density_constant_luminosity.csv'))
-            os.remove(
-                'mock_catalog_test_frequency_density_constant_luminosity.csv')
-        except Exception as e:
-            assert False, f"Exception raised: {e}"
-
-        try:
-            createMockFile(spectral_density='frequency',
-                           constant_luminosity=False)
-            self.assertTrue(os.path.exists(
-                'mock_catalog_test_frequency_density_evolving_luminosity.csv'))
-            os.remove(
-                'mock_catalog_test_frequency_density_evolving_luminosity.csv')
+            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=0, z_label='z',
+                                 fill_nans='zero', bands_data=repo_home + 'filters/test_bands.json',
+                                 bands_error_suffix='_error', flux_units=u.Unit('erg / (nm s cm2)'),
+                                 wavelength_units='nm')
         except Exception as e:
             assert False, f"Exception raised: {e}"
 
@@ -376,42 +161,37 @@ class TestStonp(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        for sd in ['wavelength', 'frequency']:
-            for cl in [True, False]:
-                createMockFile(spectral_density=sd, constant_luminosity=cl)
-
-    @classmethod
-    def tearDownClass(cls):
-        dirnames = ['stack_test_wavelength_density_luminosity']
-        for i in range(4):
-            stack_dirname = "stack_test_"
-            if i < 2:
-                stack_dirname += "wavelength_density_"
-            else:
-                stack_dirname += "frequency_density_"
-            if i % 2 == 0:
-                stack_dirname += "luminosity"
-            else:
-                stack_dirname += "normalized"
-            try:
-                for fname in sorted(os.listdir(os.path.join(cwd, stack_dirname))):
-                    os.remove(os.path.join(cwd, stack_dirname, fname))
-                os.rmdir(stack_dirname)
-            except FileNotFoundError:
-                pass
+        print("\n"+str(cls.__name__))
 
     def setUp(self):
         self.st = stonp.Stacker()
-        template_numbers, *misc = self.st._json_loader(
+        template_numbers, *_ = stonp.stacker.json_loader(
             repo_home+'spectra/blanton2003_sed_templates.json', sort=False)
         self.template_numbers = [int(template_number)
                                  for template_number in template_numbers]
+        self.sd = ""
+        self.cl = True
 
     def tearDown(self):
         self.st = None
         self.template_numbers = None
+        stack_dirname = 'stack_test_' + self.sd + '_density_'
+        if self.cl:
+            stack_dirname += 'luminosity'
+        else:
+            stack_dirname += 'normalized'
+        try:
+            for fname in sorted(os.listdir(os.path.join(cwd, stack_dirname))):
+                os.remove(os.path.join(cwd, stack_dirname, fname))
+            os.rmdir(stack_dirname)
+        except FileNotFoundError:
+            pass
 
+    @skip_if_wavelength_deactivated()
     def test_wavelength_constant_luminosity(self):
+        self.sd = 'wavelength'
+        self.cl = True
+        create_mockfile(spectral_density=self.sd, constant_luminosity=self.cl)
         mock_filename = 'mock_catalog_test_wavelength_density_constant_luminosity.csv'
         self.assertTrue(os.path.exists(mock_filename))
         stack_dirname = 'stack_test_wavelength_density_luminosity'
@@ -458,7 +238,11 @@ class TestStonp(unittest.TestCase):
 
         os.remove(mock_filename)
 
+    @skip_if_wavelength_deactivated()
     def test_wavelength_evolving_luminosity(self):
+        self.sd = 'wavelength'
+        self.cl = False
+        create_mockfile(spectral_density=self.sd, constant_luminosity=self.cl)
         mock_filename = 'mock_catalog_test_wavelength_density_evolving_luminosity.csv'
         self.assertTrue(os.path.exists(mock_filename))
         stack_dirname = 'stack_test_wavelength_density_normalized'
@@ -507,7 +291,11 @@ class TestStonp(unittest.TestCase):
 
         os.remove(mock_filename)
 
+    @skip_if_frequency_deactivated()
     def test_frequency_constant_luminosity(self):
+        self.sd = 'frequency'
+        self.cl = True
+        create_mockfile(spectral_density=self.sd, constant_luminosity=self.cl)
         mock_filename = 'mock_catalog_test_frequency_density_constant_luminosity.csv'
         self.assertTrue(os.path.exists(mock_filename))
         stack_dirname = 'stack_test_frequency_density_luminosity'
@@ -555,7 +343,11 @@ class TestStonp(unittest.TestCase):
 
         os.remove(mock_filename)
 
+    @skip_if_frequency_deactivated()
     def test_frequency_evolving_luminosity(self):
+        self.sd = 'frequency'
+        self.cl = False
+        create_mockfile(spectral_density=self.sd, constant_luminosity=self.cl)
         mock_filename = 'mock_catalog_test_frequency_density_evolving_luminosity.csv'
         self.assertTrue(os.path.exists(mock_filename))
         stack_dirname = 'stack_test_frequency_density_normalized'
@@ -603,143 +395,6 @@ class TestStonp(unittest.TestCase):
             cwd, stack_dirname, 'stacked_seds.nc')), '396ab9ffe50e6df37f3bf569b7786579')
 
         os.remove(mock_filename)
-
-
-def createMockFile(spectral_density, constant_luminosity):
-    if not isinstance(spectral_density, str):
-        raise TypeError("spectral_density must be a string")
-    if not isinstance(constant_luminosity, bool):
-        raise TypeError("constant_luminosity must be a boolean")
-    z_min = 0.1
-    z_max = 2
-    z_step = 0.01
-    n_objs = 10000
-    snr_min = 1
-    snr_max = 10
-    lum_avg = 1e41
-    lum_std = 5e40
-
-    band_names, wl_nb, r_nb, *misc = stonp.Stacker._json_loader(
-        repo_home+'filters/test_bands.json')
-    template_numbers, _, r_sed, *misc = stonp.Stacker._json_loader(
-        repo_home+'spectra/blanton2003_sed_templates.json', sort=False)
-    template_numbers = [int(template_number)
-                        for template_number in template_numbers]
-    rng = np.random.default_rng(seed=996)
-
-    # Drawing redshifts and norms
-    z_grid = np.arange(z_min / z_step, z_max / z_step + 1, 1) * z_step
-    z_inds = rng.integers(0, len(z_grid), n_objs)
-    zs = z_grid[z_inds]
-
-    if constant_luminosity is True:
-        lum_avg_real = lum_avg
-    else:
-        lum_avg_real = lum_avg * (0.5 + 2*zs)
-
-    mu = np.log(lum_avg_real**2 / np.sqrt(lum_std**2 + lum_avg_real**2))
-    sigma = np.sqrt(np.log(lum_std**2 / lum_avg**2 + 1))
-    lums = rng.lognormal(mu, sigma, size=n_objs)
-
-    # Wavelength grid and normalization in wavelength range
-    wl_min = (wl_nb[0] - 10) / (1 + z_max)
-    wl_max = (wl_nb[-1] + 10) / (1 + z_min)
-    wl_grid_full = np.arange(10*wl_min, 10*wl_max + 1, 1) / 10
-    seds_full = r_sed(wl_grid_full)
-    if spectral_density == 'frequency':
-        fq_grid_full = const.c.to('nm / s').value / wl_grid_full
-        seds_full = seds_full * wl_grid_full**2 / const.c.to('nm / s').value
-        norms_full = -np.trapezoid(seds_full, fq_grid_full, axis=1)
-
-    elif spectral_density == 'wavelength':
-        norms_full = np.trapezoid(seds_full, wl_grid_full, axis=1)
-    else:
-        raise ValueError(
-            'spectral_density must be either "wavelength" or "frequency"')
-
-    # Precomputing nb fluxes for all redshifts
-    nb_fluxes_base = np.full(
-        [seds_full.shape[0], z_grid.shape[0], len(band_names)], np.nan)
-    wl_grid_obs = np.linspace((wl_nb[0] - 10), (wl_nb[-1] + 10), 1000)
-    if spectral_density == 'frequency':
-        fq_grid_obs = const.c.to('nm / s').value / wl_grid_obs
-
-    for i, z in enumerate(z_grid):
-        wl_grid_rest = wl_grid_obs / (1 + z)
-        seds = r_sed(wl_grid_rest)
-        if spectral_density == 'frequency':
-            fq_grid_rest = const.c.to('nm / s').value / wl_grid_rest
-            seds = seds * wl_grid_rest**2 / const.c.to('nm / s').value
-
-        responses = r_nb(wl_grid_obs)
-        if spectral_density == 'wavelength':
-            nb_fluxes_base[:, i, :] = np.trapezoid(
-                seds[:, None, :] * responses, wl_grid_obs, axis=-1) / (1 + z)
-
-        elif spectral_density == 'frequency':
-            responses /= -np.trapezoid(responses,
-                                       fq_grid_obs, axis=-1)[:, None]
-            nb_fluxes_base[:, i, :] = -np.trapezoid(
-                seds[:, None, :] * responses, fq_grid_obs, axis=-1) * (1 + z)
-
-    # Normalizing so we just need to multiply times luminosity
-    nb_fluxes_base /= norms_full[:, None, None]
-
-    # Generating the catalog for each template
-    band_error_names = [f'{band_name}_error' for band_name in band_names]
-    columns = ['z']
-    columns += band_names.copy()
-    columns += band_error_names
-    columns += ['template_number']
-
-    dfs = []
-    dls = cosmo.luminosity_distance(zs).to(u.cm).value
-
-    for n in template_numbers:
-        df_tmp = pd.DataFrame(columns=columns)
-        # normalizing by luminosity
-        nb_fluxes = nb_fluxes_base[n, z_inds, :]
-        nb_fluxes *= lums[:, None]
-        nb_fluxes /= (4 * np.pi * dls**2)[:, None]
-        # Computing errors
-        flux_min = nb_fluxes.min()
-        flux_max = nb_fluxes.max()
-        error_min = flux_min / snr_min
-        error_max = flux_max / snr_max
-        nb_fluxes_err = (error_min + (nb_fluxes - flux_min) /
-                         (flux_max - flux_min) * (error_max - error_min))
-        nb_fluxes += rng.normal(0, nb_fluxes_err)
-        df_tmp[band_names] = nb_fluxes
-        df_tmp[band_error_names] = nb_fluxes_err
-        df_tmp.z = zs
-        df_tmp.template_number = n
-
-        # If constant_luminosity = False, we will impose a total flux cut
-        # based on percentile, to simulate a magnitude cut
-        flux_total = np.sum(nb_fluxes, axis=1)
-        if constant_luminosity is False:
-            flux_cut = np.percentile(flux_total, 5)
-            select = flux_total >= flux_cut
-            df_tmp = df_tmp[select]
-
-        dfs.append(df_tmp)
-
-    df = pd.concat(dfs)
-    if constant_luminosity:
-        df.to_csv(
-            f'mock_catalog_test_{spectral_density}_density_constant_luminosity.csv')
-    else:
-        df.to_csv(
-            f'mock_catalog_test_{spectral_density}_density_evolving_luminosity.csv')
-
-
-def calculate_md5(file_path):
-    import hashlib
-    hasher = hashlib.md5()
-    with open(file_path, 'rb') as f:
-        for chunk in iter(lambda: f.read(4096), b''):
-            hasher.update(chunk)
-    return hasher.hexdigest()
 
 
 if __name__ == "__main__":
