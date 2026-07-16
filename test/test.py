@@ -30,126 +30,162 @@ class TestLoadCatalog(unittest.TestCase):
             cls.mock_filename = None
 
     def setUp(self):
-        self.st = stonp.Stacker()
+        self.func = stonp.Stacker().load_catalog
 
     def tearDown(self):
-        self.st = None
+        self.func = None
 
     def test_no_args(self):
         with self.assertRaises(TypeError):
-            self.st.load_catalog()
+            self.func()
 
     def test_file_not_exists(self):
         with self.assertRaises(FileNotFoundError):
-            self.st.load_catalog('not_existing.csv')
+            self.func('not_existing.csv')
 
     def test_bad_file_arg(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(False)
-            self.st.load_catalog(1)
-            self.st.load_catalog(1.23)
-            self.st.load_catalog(object())
+        self.assertRaises(TypeError, self.func, False)
+        self.assertRaises(TypeError, self.func, 1)
+        self.assertRaises(TypeError, self.func, 1.23)
+        self.assertRaises(TypeError, self.func, object())
+        self.assertRaises(TypeError, self.func, None)
 
     def test_bad_max_nan_bands(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=False)
-            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands='a')
-            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=1.23)
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 max_nan_bands=object())
-        with self.assertRaises(ValueError):
-            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=-1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, max_nan_bands=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, max_nan_bands='a')
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, max_nan_bands=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, max_nan_bands=object())
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, max_nan_bands=None)
+
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, max_nan_bands=-1)
 
     def test_bad_z_label(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename, z_label=False)
-            self.st.load_catalog(cwd + self.mock_filename, z_label=1)
-            self.st.load_catalog(cwd + self.mock_filename, z_label=1.23)
-            self.st.load_catalog(cwd + self.mock_filename, z_label=object())
-        with self.assertRaises(ValueError):
-            self.st.load_catalog(cwd + self.mock_filename, z_label='')
-            self.st.load_catalog(cwd + self.mock_filename, z_label='bad_value')
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, z_label=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, z_label=1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, z_label=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, z_label=object)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, z_label=None)
+
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, z_label='')
+
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, z_label='bad_value')
 
     def test_bad_fill_nans(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename, fill_nans=False)
-            self.st.load_catalog(cwd + self.mock_filename, fill_nans=1)
-            self.st.load_catalog(cwd + self.mock_filename, fill_nans=1.23)
-            self.st.load_catalog(cwd + self.mock_filename, fill_nans=object())
-        with self.assertRaises(ValueError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 fill_nans='bad_value')
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, fill_nans=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, fill_nans=1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, fill_nans=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, fill_nans=object())
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, fill_nans=None)
+
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, fill_nans='bad_value')
 
     def test_bad_band_data(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename, bands_data=False)
-            self.st.load_catalog(cwd + self.mock_filename, bands_data=1)
-            self.st.load_catalog(cwd + self.mock_filename, bands_data=1.23)
-            self.st.load_catalog(cwd + self.mock_filename, bands_data=object())
-        with self.assertRaises(FileNotFoundError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_data='test.json')
-        with self.assertRaises(ValueError):
-            self.st.load_catalog(cwd + self.mock_filename, bands_data={})
-            self.st.load_catalog(cwd + self.mock_filename, bands_data="")
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_data=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_data=1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_data=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_data=object())
+
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, bands_data=None)
+
+        self.assertRaises(FileNotFoundError, self.func, cwd +
+                          self.mock_filename, bands_data='test.json')
+
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, bands_data={})
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, bands_data="")
 
     @skip_if_slow_deactivated()
     def test_bad_band_keys(self):
-        with self.assertRaises(KeyError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_data={'NB455': None})
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_data={'NB455': 'a'})
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_data={'NB455': object()})
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_data={'NB455': False})
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, bands_data={'NB455': None})
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, bands_data={'NB455': 'a'})
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, bands_data={'NB455': object()})
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, bands_data={'NB455': False})
+        self.assertRaises(KeyError, self.func, cwd +
+                          self.mock_filename, bands_data={'NB455': None})
 
     def test_bad_bands_error_suffix(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_error_suffix=False)
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_error_suffix=1)
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_error_suffix=1.23)
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 bands_error_suffix=object())
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_error_suffix=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_error_suffix=1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_error_suffix=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_error_suffix=object())
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, bands_error_suffix=None)
 
     def test_bad_flux_units(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename, flux_units=False)
-            self.st.load_catalog(cwd + self.mock_filename, flux_units=1)
-            self.st.load_catalog(cwd + self.mock_filename, flux_units=1.23)
-            self.st.load_catalog(cwd + self.mock_filename, flux_units=object())
-        with self.assertRaises(ValueError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 flux_units='bad_value')
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 flux_units=u.Unit("bar"))
+
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, flux_units=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, flux_units=1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, flux_units=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, flux_units=object())
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, flux_units=None)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, flux_units=u.Unit("bar"))
+
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, flux_units='bad_value')
 
     def test_bad_wavelength_units(self):
-        with self.assertRaises(TypeError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 wavelength_units=False)
-            self.st.load_catalog(cwd + self.mock_filename, wavelength_units=1)
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 wavelength_units=1.23)
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 wavelength_units=object())
-        with self.assertRaises(ValueError):
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 wavelength_units='bad_value')
-            self.st.load_catalog(cwd + self.mock_filename,
-                                 wavelength_units=u.Unit("bar"))
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, wavelength_units=False)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, wavelength_units=1)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, wavelength_units=1.23)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, wavelength_units=object())
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, wavelength_units=None)
+        self.assertRaises(TypeError, self.func, cwd +
+                          self.mock_filename, wavelength_units=u.Unit("bar"))
+
+        self.assertRaises(ValueError, self.func, cwd +
+                          self.mock_filename, wavelength_units='bad_value')
 
     @skip_if_slow_deactivated()
     def test_check_all_correct_args(self):
         try:
-            self.st.load_catalog(cwd + self.mock_filename, max_nan_bands=0, z_label='z',
-                                 fill_nans='zero', bands_data=repo_home + 'filters/test_bands.json',
-                                 bands_error_suffix='_error', flux_units=u.Unit('erg / (nm s cm2)'),
-                                 wavelength_units='nm')
+            self.func(cwd + self.mock_filename, max_nan_bands=0, z_label='z',
+                      fill_nans='zero', bands_data=repo_home + 'filters/test_bands.json',
+                      bands_error_suffix='_error', flux_units=u.Unit('erg / (nm s cm2)'),
+                      wavelength_units='nm')
         except Exception as e:
             assert False, f"Exception raised: {e}"
 
