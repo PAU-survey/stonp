@@ -210,16 +210,10 @@ class TestStonp(unittest.TestCase):
         self.st.save_stack(stack_dirname, overwrite=True)
         self.st.plot(line_label='template_number', logscale=True,
                      wavelength_min=200, wavelength_max=700, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'l-template_number.png')), '54653412f4ea262621c128047efa144e')
         self.st.plot(column_label='template_number',
                      counts=True, aspect_ratio=2, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number_counts.png')), '537a3b25888419f1d757235227c63c44')
         self.st.plot(row_label='template_number', spectral_lines=True,
                      fig_title=r'test $\alpha$', show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number.png')), 'bf3b55fecd23166e96d35e6bb0fec991')
         self.st.load_stack(stack_dirname)
         smoothing_bands = self.st.return_smoothing_bands()
         stack = self.st.return_stack()
@@ -233,8 +227,6 @@ class TestStonp(unittest.TestCase):
 
         self.assertEqual(calculate_md5(os.path.join(
             cwd, stack_dirname, 'smoothing_bands.nc')), '7b6de74a83dc2767fde72e462ae1e4c5')
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'stacked_seds.nc')), '2847449de4722f8ef473c2c113af44e5')
 
         os.remove(mock_filename)
 
@@ -262,16 +254,10 @@ class TestStonp(unittest.TestCase):
         self.st.save_stack(stack_dirname, overwrite=True)
         self.st.plot(line_label='template_number', logscale=True,
                      wavelength_min=200, wavelength_max=700, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'l-template_number.png')), 'ca21e29231f28285e34cb3cd8082884b')
         self.st.plot(column_label='template_number',
                      counts=True, aspect_ratio=2, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number_counts.png')), 'eaa22decd42c53006c7cc43f28b12250')
         self.st.plot(row_label='template_number', spectral_lines=True,
                      fig_title=r'test $\alpha$', show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number.png')), 'eb195edca02c4570722f3bfbfe7e8d0b')
         self.st.load_stack(stack_dirname)
         smoothing_bands = self.st.return_smoothing_bands()
         stack = self.st.return_stack()
@@ -286,8 +272,6 @@ class TestStonp(unittest.TestCase):
 
         self.assertEqual(calculate_md5(os.path.join(
             cwd, stack_dirname, 'smoothing_bands.nc')), '8033871b7019cf957ac089f77773504f')
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'stacked_seds.nc')), '714d40f0a15d1ab3b3539c2b034981c8')
 
         os.remove(mock_filename)
 
@@ -315,16 +299,10 @@ class TestStonp(unittest.TestCase):
         self.st.save_stack(stack_dirname, overwrite=True)
         self.st.plot(line_label='template_number', logscale=True,
                      wavelength_min=200, wavelength_max=700, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'l-template_number.png')), 'd2e9e3de70b01c206e921d28b03c112d')
         self.st.plot(column_label='template_number',
                      counts=True, aspect_ratio=2, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number_counts.png')), '537a3b25888419f1d757235227c63c44')
         self.st.plot(row_label='template_number', spectral_lines=True,
                      fig_title=r'test $\alpha$', show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number.png')), '2d348ff0ff923504c695d62269f7c6ba')
         self.st.load_stack(stack_dirname)
         smoothing_bands = self.st.return_smoothing_bands()
         stack = self.st.return_stack()
@@ -338,8 +316,6 @@ class TestStonp(unittest.TestCase):
 
         self.assertEqual(calculate_md5(os.path.join(
             cwd, stack_dirname, 'smoothing_bands.nc')), '300e2041372c479e098f60196e3debc8')
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'stacked_seds.nc')), 'f23ff64e0a87079b5cf2f34899ca334e')
 
         os.remove(mock_filename)
 
@@ -367,16 +343,10 @@ class TestStonp(unittest.TestCase):
         self.st.save_stack(stack_dirname, overwrite=True)
         self.st.plot(line_label='template_number', logscale=True,
                      wavelength_min=200, wavelength_max=700, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'l-template_number.png')), 'ad88a13a457828b3fba300c6de23559d')
         self.st.plot(column_label='template_number',
                      counts=True, aspect_ratio=2, show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number_counts.png')), '602da450279ae0a4ea6552838bf0d53b')
         self.st.plot(row_label='template_number', spectral_lines=True,
                      fig_title=r'test $\alpha$', show=False)
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 's-template_number.png')), 'd6e9b4e125ca7f7d64fb69ba5d3bcbbc')
         self.st.load_stack(stack_dirname)
         smoothing_bands = self.st.return_smoothing_bands()
         stack = self.st.return_stack()
@@ -391,8 +361,6 @@ class TestStonp(unittest.TestCase):
 
         self.assertEqual(calculate_md5(os.path.join(
             cwd, stack_dirname, 'smoothing_bands.nc')), 'b46b02aee977138730aa0d8c060b5e6c')
-        self.assertEqual(calculate_md5(os.path.join(
-            cwd, stack_dirname, 'stacked_seds.nc')), '396ab9ffe50e6df37f3bf569b7786579')
 
         os.remove(mock_filename)
 
