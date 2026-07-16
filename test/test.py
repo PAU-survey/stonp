@@ -1,3 +1,4 @@
+import stonp
 import unittest
 import sys
 import os
@@ -6,10 +7,8 @@ import astropy.units as u
 
 from helpers import create_mockfile, calculate_md5, skip_if_frequency_deactivated, skip_if_wavelength_deactivated, skip_if_slow_deactivated
 
-sys.path.append('../src/stonp/')
-import stonp
 cwd = os.getcwd() + '/'
-repo_home = cwd + '../'
+repo_home = cwd
 
 
 class TestLoadCatalog(unittest.TestCase):

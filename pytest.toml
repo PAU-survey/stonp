@@ -1,0 +1,5 @@
+# pytest.ini
+[pytest]
+pythonpath = ["src"]
+testpaths = ["test"]
+python_files = ["test_utils.py", "test.py"]

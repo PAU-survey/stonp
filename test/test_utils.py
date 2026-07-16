@@ -7,7 +7,7 @@ import scipy.interpolate
 import stonp
 
 cwd = os.getcwd() + '/'
-repo_home = cwd + '../'
+repo_home = cwd
 
 
 class TestLinterp(unittest.TestCase):

@@ -4,10 +4,6 @@ import sys
 
 from helpers import create_mockfile, skip_if_frequency_deactivated, skip_if_wavelength_deactivated, skip_if_slow_deactivated
 
-sys.path.append('../src/stonp/')
-cwd = os.getcwd() + '/'
-repo_home = cwd + '../'
-
 
 class TestGenerator(unittest.TestCase):
 

@@ -29,6 +29,11 @@ dependencies = [
     "pyarrow"
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/PAU-survey/stonp"
 "Bug Tracker" = "https://github.com/PAU-survey/stonp/issues"
