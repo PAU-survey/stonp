@@ -9,9 +9,8 @@ import astropy.units as u
 from astropy.cosmology.realizations import Planck18 as cosmo
 from stonp.utils import json_loader
 
-sys.path.append('../src/stonp/')
 cwd = os.getcwd() + '/'
-repo_home = cwd + '../'
+repo_home = cwd
 
 _get_wavelength_def = os.getenv("SKIP_WAVELENGTH_TESTS") == "1"
 _get_frequency_def = os.getenv("SKIP_FREQUENCY_TESTS") == "1"

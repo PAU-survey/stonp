@@ -3,3 +3,4 @@
 pythonpath = ["src"]
 testpaths = ["test"]
 python_files = ["test_utils.py", "test.py"]
+filterwarnings = ['ignore::RuntimeWarning']
