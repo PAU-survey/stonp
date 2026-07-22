@@ -24,8 +24,8 @@ dependencies = [
     "pandas",
     "xarray",
     "matplotlib",
-    "scipy",
-    "astropy >= 4.2",
+    "scipy >= 1.10",
+    "astropy >= 5.3.3",
     "pyarrow"
 ]
 
