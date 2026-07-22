@@ -484,7 +484,8 @@ class Stacker():
             plt.savefig(f'{folder}{label}_hist.pdf',
                         bbox_inches='tight', transparent=True)
             plt.savefig(f'{folder}{label}_hist.png',
-                        bbox_inches='tight', transparent=True)
+                        bbox_inches='tight', transparent=True,
+                        metadata={"Software": "Stonp"})
 
         plt.show()
 
@@ -803,7 +804,7 @@ class Stacker():
                     if self.flux_density == 'wavelength':
                         lum_units = (self.flux_units_catalog * dl.unit**2
                                      * self.wavelength_flux_units)
-                    else: # self.flux_density == 'frequency':
+                    else:  # self.flux_density == 'frequency':
                         lum_units = (self.flux_units_catalog * dl.unit**2
                                      * self.frequency_units)
 
@@ -814,7 +815,7 @@ class Stacker():
                         plt.savefig('average_luminosity_vs_redshift.pdf',
                                     transparent=True)
                         plt.savefig('average_luminosity_vs_redshift.png',
-                                    transparent=True)
+                                    transparent=True, metadata={"Software": "Stonp"})
 
                     if show_lum_plot:
                         plt.show()
@@ -1231,13 +1232,13 @@ class Stacker():
         elif self.stacked_seds.attrs['flux_conversion'] == 'luminosity':
             if self.flux_density == 'wavelength':
                 ylabel = rf"$L_\lambda$ ({self.stacked_seds.attrs['flux_units_latex']})"
-            else: # self.flux_density == 'frequency':
+            else:  # self.flux_density == 'frequency':
                 ylabel = rf"$L_\nu$ ({self.stacked_seds.attrs['flux_units_latex']})"
 
         else:
             if self.flux_density == 'wavelength':
                 ylabel = rf"$f_\lambda$ ({self.stacked_seds.attrs['flux_units_latex']})"
-            else: # self.flux_density == 'frequency':
+            else:  # self.flux_density == 'frequency':
                 ylabel = rf"$f_\nu$ ({self.stacked_seds.attrs['flux_units_latex']})"
 
         fig_labels = list(self.stacked_seds.dims)
@@ -1425,13 +1426,14 @@ class Stacker():
                 plt.savefig(f'{self.stack_folder}{filename}.pdf',
                             transparent=True)
                 plt.savefig(f'{self.stack_folder}{filename}.png',
-                            transparent=True)
+                            transparent=True, metadata={"Software": "Stonp"})
 
             else:
                 plt.savefig(f'{self.stack_folder}{filename}.pdf',
                             bbox_inches='tight', transparent=True)
                 plt.savefig(f'{self.stack_folder}{filename}.png',
-                            bbox_inches='tight', transparent=True)
+                            bbox_inches='tight', transparent=True,
+                            metadata={"Software": "Stonp"})
 
             if show:
                 plt.show()
